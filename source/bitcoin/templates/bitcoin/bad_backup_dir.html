@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% comment %}
+    Copyright 2018-2020 DeNova
+    Last modified: 2020-09-25
+{% endcomment %}
+
+{% load i18n custom %}
+
+{% block titlevar %}
+    Bad Backup Directory
+{% endblock %}
+
+{% block mainpane %}
+    {% subtitle "Bad Backup Directory" %}
+
+    <p class="dropcap">
+        The following error was detected with the
+        Blockchain Backup backup directory.
+    </p>
+    <p>
+        <strong>Error: </strong>{{ backup_dir_error }}
+    </p>
+    <p>
+        You need to change your
+        {% include 'bitcoin/clips/preferences_button.html' %}
+    </p>
+{% endblock mainpane %}
+

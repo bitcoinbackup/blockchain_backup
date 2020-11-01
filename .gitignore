@@ -1,0 +1,26 @@
+# Files git should ignore
+
+# Copyright 2018-2020 DeNova
+# Last modified: 2020-10-26
+
+# when you add a file or dir to .gitignore, always:
+#     git rm --cached FILENAME
+# or for a dir
+#     git rm -r --cached FILENAME
+
+*#
+*.o
+*.pyc
+*.pyo
+*.class
+*.log
+
+docs/
+
+virtualenv/
+virtualenv3/
+
+# data
+data/
+
+migrations/

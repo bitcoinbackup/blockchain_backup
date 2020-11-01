@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% comment %}
+    Copyright 2018-2019 DeNova
+    Last modified: 2019-07-22
+
+{% endcomment %}
+
+{% load i18n custom %}
+
+{% block titlevar %}
+No Remote Access Permitted
+{% endblock %}
+
+
+{% block mainpane %}
+    {% subtitle "No Remote Access Permitted" %}
+
+    <p class="dropcap">
+        You can only access Blockchain Backup from the same machine
+        where Blockchain Backup and Bitcoin Core run.
+        This restriction helps protect your Bitcoin wallet.
+    </p>
+{% endblock mainpane %}

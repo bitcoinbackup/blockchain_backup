@@ -1,0 +1,21 @@
+User-agent: denova-htdig   # directed to robot running on DeNova
+Disallow: /cgi-bin/
+Disallow: /cgi-local/
+Disallow: /secure/
+Disallow: /htdig/
+Disallow: */installers
+Disallow: /sitestatic/
+Disallow: /stats/
+User-agent: *   # directed to all spiders
+Disallow: */installers
+Disallow: /sitestatic/
+Disallow: /stats/
+Disallow: *.txt
+Disallow: *.gif
+Disallow: *.jpg
+Disallow: *.png
+Disallow: *.jar
+Disallow: *.exe
+Disallow: *.zip
+Disallow: test*.*
+

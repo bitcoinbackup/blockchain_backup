@@ -1,0 +1,14 @@
+{% comment %}
+    Copyright 2019-2020 DeNova
+    Last modified: 2020-10-06
+{% endcomment %}
+
+{% load i18n %}
+
+{% if core_up_to_date == False %}
+<p>
+    You should
+    <a href="https://denova.com/open_source/safeget/app/bitcoin-core">upgrade Bitcoin Core</a> to version
+    <strong>{{ last_core_version }}</strong> as soon as possible.
+</p>
+{% endif %}

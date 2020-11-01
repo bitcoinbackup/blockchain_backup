@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% comment %}
+    Copyright 2018-2019 DeNova
+    Last modified: 2019-07-22
+{% endcomment %}
+
+{% load i18n custom %}
+
+{% block titlevar %}
+{{ app }} Is Running
+{% endblock %}
+
+{% block mainpane %}
+    {% subtitle %}
+        {{ app }} Is Running
+    {% endsubtitle %}
+
+    <p class="dropcap">
+        {{ app }}, one of the Bitcoin Core programs, appears to be running on
+        this computer. Bitcoin Core only permits one of its programs to operate at a time.
+        {{ more }}
+    </p>
+    <p>
+        After you close down <strong>{{ app }}</strong>, then you can reload this page.
+    </p>
+{% endblock mainpane %}
+

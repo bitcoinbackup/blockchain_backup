@@ -1,0 +1,24 @@
+{% extends "bitcoin/base.html" %}
+{% comment %}
+    Copyright 2018-2019 DeNova
+    Last modified: 2019-08-02
+{% endcomment %}
+{% load i18n custom %}
+
+{% block titlevar %}
+    Stop Blockchain Restore
+{% endblock %}
+
+{% block page_header %}
+    {% subtitle %}
+        Stopping Restore
+    {% endsubtitle %}
+{% endblock page_header %}
+
+{% block page_notice %}
+    WARNING: Do not close this window or shut down your computer yet.
+{% endblock page_notice %}
+
+{% block page_progress %}
+    Waiting until the restore has finished.
+{% endblock page_progress %}

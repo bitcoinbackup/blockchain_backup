@@ -1,0 +1,25 @@
+{% extends "django_addons/base_content.html" %}
+{% comment %}
+    Base for html content templates.
+
+    Copyright 2018-2020 DeNova
+    Last modified: 2020-10-01
+
+{% endcomment %}
+{% load i18n bootstrap4 %}
+
+{% block title %}
+    {% block titlevar %}
+        {% if  header %}
+        {{ header | safe }}
+        {% else %}
+        Blockchain Backup restores lost access to your Bitcoin Core wallet
+        {% endif %}
+    {% endblock %}
+    | Blockchain Backup
+{% endblock title %}
+
+{% block footer %}
+    <p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>
+    {{ block.super }}
+{% endblock footer %}

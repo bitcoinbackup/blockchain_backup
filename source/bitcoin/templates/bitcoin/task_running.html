@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% comment %}
+    Copyright 2019 DeNova
+    Last modified: 2019-07-22
+{% endcomment %}
+
+{% load i18n custom %}
+
+{% block titlevar %}
+{{ app|capfirst }} Task Is Running
+{% endblock %}
+
+{% block mainpane %}
+    {% subtitle %} {{ app|capfirst }} Task Is Running {% endsubtitle %}
+
+    <p class="dropcap">
+        The {{ app }} task appears to be running on
+        this computer. Only one task may operate at a time.
+    </p>
+    <p>
+        After the <strong>{{ app }}</strong> task finishes, then you can reload this page.
+    </p>
+{% endblock mainpane %}
+

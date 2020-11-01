@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% comment %}
+    Copyright 2018-2020 DeNova
+    Last modified: 2020-10-07
+{% endcomment %}
+
+{% load i18n custom %}
+
+{% block titlevar %}
+    Welcome to Blockchain Backup!
+{% endblock %}
+
+{% block mainpane %}
+
+<p class="dropcap">
+    The first step is to
+    {% include 'bitcoin/clips/backup_button.html' %}
+</p>
+<p>
+    As soon as your first backup is done, your copy of the blockchain is protected.
+    If it becomes damaged, Blockchain Backup can restore it.
+    You will be much less likely to lose access to your wallet.
+</p>
+
+<p>
+    This initial backup can take hours or more,
+    depending on how much data you have and
+    the speed of your computer, drive, and network.
+    Future backups will usually take just minutes.
+</p>
+{% endblock mainpane %}
+
