@@ -1,0 +1,43 @@
+{% extends "django_addons/base_content.html" %}
+{% comment %}
+    Copyright 2009-2019 DeNova
+    Last modified: 2019-10-12
+{% endcomment %}
+{% load i18n bootstrap4 custom %}
+
+{% block titlevar %}
+    {% trans 'Log in' %}
+{% endblock %}
+
+{% block bodyclass %}login{% endblock %}
+
+{% block content_title %}{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block body-content %}
+    {% block content %}
+    <div class="row">
+    {% block signin_headline %}
+        {% title %}
+            {% trans 'Log in' %}
+        {% endtitle %}
+    {% endblock signin_headline %}
+    </div>
+    <div class="row">
+           <form action="/sign_in/" method="post" id="login-form" role="form">
+                {% csrf_token %}
+                {% bootstrap_form form %}
+
+                <input type="hidden" name="this_is_the_login_form" value="1"/>
+                <input type="hidden" name="next" value="{{ next }}"/>
+
+                <p>
+                    {% block signin_button %}
+                        {% submit_button "Log in" "Use the credentials emailed to you" %}
+                    {% endblock signin_button %}
+                </p>
+            </form>
+    </div>
+    {% endblock content %}
+{% endblock body-content %}

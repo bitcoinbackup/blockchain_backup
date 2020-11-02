@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% comment %}
+
+    Copyright 2009-2019 DeNova
+    Last modified: 2019-10-12
+
+{% endcomment %}
+{% load i18n custom %}
+
+{% block titlevar %}
+    Logged Out
+{% endblock %}
+
+{% block breadcrumbs %}
+{% endblock %}
+
+{% block body-content %}
+    {% block content %}
+
+{% subtitle %}
+    {% trans 'You logged out successfully.' %}
+{% endsubtitle %}
+
+<ul>
+<p>
+    {% trans 'Return to home page' %} at {% include "clips/logo.html" %}
+</p>
+</ul>
+
+    {% endblock content %}
+{% endblock body-content %}
+
+{% block footer %}{% endblock %}
+

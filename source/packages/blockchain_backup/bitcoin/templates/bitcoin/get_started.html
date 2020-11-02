@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% comment %}
+    Copyright 2019-2020 DeNova
+    Last modified: 2020-09-25
+{% endcomment %}
+
+{% load i18n custom %}
+
+{% block titlevar %}
+    Getting Started
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {% include 'static/css/bignum.css' %}
+{% endblock extrastyle %}
+
+{% block mainpane %}
+
+{% subtitle %}
+    Blockchain Backup restores lost access to your Bitcoin Core wallet.
+{% endsubtitle %}
+
+<p class="dropcap">
+    Get started:
+</p>
+<ol> {# the divs are for bignum.css #}
+    <li>
+        <div>Configure your browser to <a href="https://www.whatismybrowser.com/guides/how-to-enable-cookies/">accept cookies</a> for <strong>blockchain-backup.local</strong>.</div>
+    </li>
+    <li>
+        <div>
+            Install the latest <a href="https://denova.com/safeget/app/bitcoin-core">Bitcoin Core</a>.
+        </div>
+    </li>
+    <li>
+        <div>Configure your {% include 'bitcoin/clips/preferences_button.html' %}</div>
+    </li>
+</ol>
+{% endblock mainpane %}
+

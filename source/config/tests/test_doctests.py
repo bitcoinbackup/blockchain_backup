@@ -18,6 +18,7 @@ from denova.python.log import get_log
 import blockchain_backup.config.bitcoin_shutdown
 import blockchain_backup.config.bitcoin_startup
 import blockchain_backup.config.check_for_updates
+import blockchain_backup.config.remove_host
 import blockchain_backup.config.safecopy
 import blockchain_backup.config.setup
 from blockchain_backup.bitcoin.tests import utils as test_utils
@@ -42,6 +43,12 @@ class TestDoctests(TestCase):
         ''' Run the check for updates doctests. '''
 
         test_result = doctest.testmod(blockchain_backup.config.check_for_updates, report=True)
+        self.assertEqual(test_result[0], 0)
+
+    def test_remove_host(self):
+        ''' Run the remove_host doctests. '''
+
+        test_result = doctest.testmod(blockchain_backup.config.remove_host, report=True)
         self.assertEqual(test_result[0], 0)
 
     def test_safecopy(self):

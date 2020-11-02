@@ -1,0 +1,22 @@
+{% extends "admin/singleton_enabled_base.html" %}
+{# extends "admin/base.html" #}
+{% comment %}
+    Admin base template.
+
+    Wrapper for "admin/base.html".
+    All other custom admin templates should extend this template, not "admin/base.html".
+
+    Django admin does not have a "block extrascript", so this template includes one
+    inside of "block extrahead".
+
+    Copyright 2010-2019 DeNova
+    Last modified: 2019-09-24
+{% endcomment %}
+{% load i18n custom %}
+
+{% block title %}
+    {% block titlevar %}
+        {{ title }} | {% get_title title %}
+    {% endblock %}
+{% endblock title %}
+

@@ -1,0 +1,18 @@
+#! /bin/bash
+
+# Progressive kill. Gives processes a chance to clean up.
+
+#     Copyright 2018-2019 DeNova
+#     Last modified: 2019-12-01
+
+set -x
+
+pid=$1
+for sig in TERM HUP KILL ; do
+
+    if psgrep $pid &>/dev/null ; then
+        kill -$sig $pid
+        sleep 1
+    fi
+
+done

@@ -1,0 +1,22 @@
+{% comment %}
+
+    Bundled JS.
+
+    Copyright 2009-2019 DeNova
+    Last modified: 2019-12-17
+
+{% endcomment %}
+{% load custom %}
+
+<script type="text/javascript">
+    try {
+        {% include 'static/js/jquery.min.js' %}
+        {% include 'static/js/popper.min.js' %}
+        {% include 'static/bootstrap/js/bootstrap.min.js' %}
+        {% include 'static/js/utils.js' %}
+    }
+    catch (e) {
+        console.log(e)
+        report_error(e)
+    }
+</script>
