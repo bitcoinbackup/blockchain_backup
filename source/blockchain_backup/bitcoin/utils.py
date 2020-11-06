@@ -2,7 +2,7 @@
     Utilities for blockchain backup.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-04
 '''
 
 import json
@@ -14,8 +14,8 @@ from django.utils.timezone import now
 
 from blockchain_backup import __file__ as blockchain_backup_file
 from blockchain_backup.bitcoin import constants, state
+from blockchain_backup.core_version import CORE_VERSION
 from blockchain_backup.settings import CONNECTION_HEARTBEAT, USE_SOCKETIO
-from blockchain_backup.version import CORE_VERSION
 from denova.os.command import background, run
 from denova.os.osid import is_windows
 from denova.os.process import get_path, is_program_running
@@ -697,7 +697,6 @@ def get_path_of_core_apps():
         Get the path of the bitcoin core apps.
 
         >>> get_path_of_core_apps()
-        '/usr/local/bin'
     '''
     bin_dir = None
 

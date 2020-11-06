@@ -2,7 +2,7 @@
     Tests for the home page.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-07
+    Last modified: 2020-11-05
 '''
 
 from ve import activate, virtualenv_dir
@@ -19,7 +19,8 @@ from blockchain_backup.bitcoin import preferences, state
 from blockchain_backup.bitcoin.models import Preferences, State
 from blockchain_backup.bitcoin.tests import utils as test_utils
 from blockchain_backup.bitcoin.views import get_home_page_response
-from blockchain_backup.version import CORE_VERSION, BLOCKCHAIN_BACKUP_VERSION
+from blockchain_backup.core_version import CORE_VERSION
+from blockchain_backup.version import BLOCKCHAIN_BACKUP_VERSION
 from denova.python.log import get_log
 
 log = get_log()
@@ -362,7 +363,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'denova_reactivated.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup restores lost access to your Bitcoin Core wallet | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/backup/" name="back-up-button" id="back-up-id" class="btn btn-secondary btn-block" role="button"  title="Back up the blockchain"> <strong>Back up </strong> </a>' in response.content)
@@ -404,7 +405,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'active_user_all_good.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup restores lost access to your Bitcoin Core wallet | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/backup/" name="back-up-button" id="back-up-id" class="btn btn-secondary btn-block" role="button"  title="Back up the blockchain"> <strong>Back up </strong> </a>' in response.content)
@@ -447,7 +448,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'active_user_all_good.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup restores lost access to your Bitcoin Core wallet | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'Your blockchain was last backed up at' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
@@ -491,7 +492,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'active_user_need_bcb_upgrade.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup restores lost access to your Bitcoin Core wallet | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'You are not running the latest version of' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
@@ -535,7 +536,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'active_user_need_core_upgrade.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup restores lost access to your Bitcoin Core wallet | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'upgrade Bitcoin Core' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)

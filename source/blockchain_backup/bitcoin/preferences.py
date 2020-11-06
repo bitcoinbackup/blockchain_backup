@@ -2,7 +2,7 @@
     Manage blockchain_backup prefs.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-05
 '''
 
 import os
@@ -13,6 +13,7 @@ from django.db import transaction
 
 from blockchain_backup.bitcoin import constants
 from blockchain_backup.bitcoin.models import Preferences
+from blockchain_backup.settings import HOME_DIR
 from denova.os.user import getdir, whoami
 from denova.python.log import get_log
 
@@ -360,6 +361,9 @@ def get_preferences():
         record = Preferences.objects.get()
     except Preferences.DoesNotExist:
         record = Preferences()
+    except:  # 'bare except' because it catches more than "except Exception"
+        log(format_exc())
+        record = Preferences()
 
     return record
 
@@ -375,6 +379,6 @@ def save_preferences(record):
         try:
             record.save()
         except: # 'bare except' because it catches more than "except Exception"
-            log('tried to save butcoin.preferences')
+            log('tried to save bitcoin.preferences')
             log(format_exc())
             raise

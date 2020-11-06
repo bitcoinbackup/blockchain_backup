@@ -2,7 +2,7 @@
     Utilities for bitcoin tests.
 
     Copyright 2019-2020 DeNova
-    Last modified: 2020-11-01
+    Last modified: 2020-11-06
 '''
 
 import os
@@ -78,20 +78,24 @@ def copy_bitcoin_binaries(to_dir):
     '''
         Copy bitcoin binaries to the test environment.
 
-        >>> copy_bitcoin_binaries()
-        True
+        >>> TEMP_DIR = '/tmp/.test'
+        >>> if os.path.exists(TEMP_DIR):
+        ...     shutil.rmtree(TEMP_DIR)
+        >>> copy_bitcoin_binaries(TEMP_DIR)
+        False
+        >>> if os.path.exists(TEMP_DIR):
+        ...     shutil.rmtree(TEMP_DIR)
     '''
     def copy_binary_file(filename, to_dir):
 
         ok = False
 
-        stdout = command.run('whereis', filename).stdout.strip()
-        index = stdout.find(f'{filename}:')
-        if index > 0:
-            full_path = stdout[index:]
-            if full_path > 0 and os.path.exists(full_path):
-                shutil.copy(full_path,  to_dir)
-                ok = True
+        full_path = command.run('which', filename).stdout.strip()
+        if full_path > 0 and os.path.exists(full_path):
+            shutil.copy(full_path,  to_dir)
+            ok = True
+
+        return ok
 
     os.makedirs(to_dir)
     ok = copy_binary_file('bitcoind', to_dir)
@@ -418,7 +422,8 @@ def start_fake_backup():
         >>> start_fake_backup()
     '''
 
-    args = [os.path.join(PROJECT_PATH, 'tools', constants.RESTORE_PROGRAM)]
+    config_dir = os.path.join(PROJECT_PATH, 'config')
+    args = [os.path.join(config_dir, constants.BACKUP_PROGRAM), config_dir, '/tmp']
     command.background(*args)
 
 def stop_backup():
@@ -447,7 +452,8 @@ def start_fake_restore():
         >>> start_fake_restore()
     '''
 
-    args = [os.path.join(PROJECT_PATH, 'tools', constants.RESTORE_PROGRAM)]
+    config_dir = os.path.join(PROJECT_PATH, 'config')
+    args = [os.path.join(config_dir, constants.RESTORE_PROGRAM), config_dir, '/tmp']
     command.background(*args)
 
 def stop_restore():

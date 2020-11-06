@@ -4,7 +4,7 @@ django-bootstrap4
 django-forms-bootstrap
 django-nose
 gunicorn
-pexpect==4.7
+pexpect==4.8
 pyOpenSSL==19.0.0
 requests==2.22.0
 service_identity

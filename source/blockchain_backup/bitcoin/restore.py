@@ -1,6 +1,6 @@
 '''
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-29
+    Last modified: 2020-11-05
 '''
 
 import json
@@ -20,7 +20,8 @@ from blockchain_backup.bitcoin.manager import BitcoinManager
 from blockchain_backup.bitcoin.state import set_last_backed_up_time
 from denova.os import command
 from denova.os.process import get_pid
-from denova.python.log import get_log, get_log_path
+from denova.os.user import whoami
+from denova.python.log import get_log, get_log_path, BASE_LOG_DIR
 from denova.python.ve import virtualenv_dir
 
 
@@ -330,7 +331,7 @@ class RestoreTask(Thread):
         self.log('starting to wait for restore')
 
         if restore_process is None:
-            log_path = os.path.join(gettempdir(), 'safecopy.log')
+            log_path = os.path.join(BASE_LOG_DIR, whoami(), 'bcb-restore.log')
 
             # wait until the log appears
             while bitcoin_utils.is_restore_running() and not self.is_interrupted():

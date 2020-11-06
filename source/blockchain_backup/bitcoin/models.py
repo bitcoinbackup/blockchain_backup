@@ -2,7 +2,7 @@
     Models for bitcoin core.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-05
 '''
 
 from django.core.validators import MaxValueValidator
@@ -41,6 +41,7 @@ class Preferences(models.Model):
     SCHEDULE_HELP = _('Enter the minimum hours between backups.')
     BACKUP_DIR_HELP = _('The default backup directory is a subdirectory of your data directory.')
     EXTRA_ARGS_HELP = _('Extra arguments wanted to start bitcoind and bitcoin-qt')
+    OWNER_HELP = _('The user who owns the Bitcoin Core wallet.')
 
     data_dir = models.CharField(_('Data directory for Bitcoin Core.'),
         max_length=MAX_LENGTH, null=True, blank=True,

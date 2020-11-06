@@ -2,7 +2,7 @@
     Back up the blockchain.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-29
+    Last modified: 2020-11-05
 '''
 
 import json
@@ -27,7 +27,8 @@ from blockchain_backup.settings import DEBUG, DATABASE_PATH, TIME_ZONE
 from denova.os import command
 from denova.os.osid import is_windows
 from denova.os.process import get_pid
-from denova.python.log import get_log, get_log_path
+from denova.os.user import whoami
+from denova.python.log import get_log, get_log_path, BASE_LOG_DIR
 from denova.python.times import seconds_to_datetime
 from denova.python.ve import virtualenv_dir
 
@@ -344,13 +345,14 @@ class BackupTask(Thread):
                 index = line.rfind(os.sep)
                 if index > 0:
                     line = self.COPYING.format(line[index+1:])
-                self.manager.update_progress(line)
+                if line != self.COPYING:
+                    self.manager.update_progress(line)
 
 
         self.log('starting to wait for backup')
 
         if backup_process is None:
-            log_path = '/tmp/safecopy.log'
+            log_path = os.path.join(BASE_LOG_DIR, whoami(), 'bcb-backup.log')
 
             # wait until the log appears
             while (is_backup_running() and

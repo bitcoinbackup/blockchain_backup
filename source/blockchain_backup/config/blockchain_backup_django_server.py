@@ -3,7 +3,7 @@
     Upstream server for django.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-04
 '''
 
 import argparse
@@ -97,7 +97,6 @@ def start_uwsgi_server_for_django(bin_dir):
         log('uwsgi django server started')
     except CalledProcessError as scpe:
         log('uwsgi django server threw a CalledProcessError while starting')
-        log(scpe.resultcode)
         log(scpe.stdout)
         log(scpe.stderr)
         log(scpe)

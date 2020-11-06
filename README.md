@@ -13,11 +13,7 @@ A full manual and source code documentation are at:
 Change Log
 ----------
 
-  * Support Bitcoin Core 0.20.1
-  * Integrated the updated DeNova log servers.
-  * Changed name of app to blockchain-backup
-  * Updated bootstrap to latest version
-  * Do not report failure if user stops updating before Bitcoind has started.
+  * Report error if database is inaccessible.
 
 
 Full Description

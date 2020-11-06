@@ -3,7 +3,7 @@
     Upstream server for socketio.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-04
 '''
 
 import argparse
@@ -18,7 +18,7 @@ os.chdir(CURRENT_DIR)
 from ve import activate, virtualenv_dir
 activate(django_app='blockchain-backup')
 
-from blockchain_backup.settings import LOGS_DIR, LOCAL_HOST, PROJECT_PATH, SOCKETIO_PORT
+from blockchain_backup.settings import LOCAL_HOST, PROJECT_PATH, SOCKETIO_PORT
 from denova.os.command import run
 from denova.os.fs import cd
 from denova.os.user import whoami
@@ -33,19 +33,6 @@ def main(args):
         stop()
 
 def start():
-    log_dir = LOGS_DIR
-    try:
-        if not os.path.exists(log_dir):
-            os.mkdir(log_dir)
-
-        if os.path.exists(log_dir):
-            user = whoami()
-            log_dir = os.path.join(log_dir, user)
-            if not os.path.exists(log_dir):
-                os.mkdir(log_dir)
-    except: # 'bare except' because it catches more than "except Exception"
-        log_dir = '/tmp'
-
     hostname = LOCAL_HOST
     log(f'hostname: {hostname}')
 

@@ -1,9 +1,10 @@
 '''
     Bitcoin  urls.
 
-    Copyright 2018-2019 DeNova
-    Last modified: 2019-12-12
+    Copyright 2018-2020 DeNova
+    Last modified: 2020-11-05
 '''
+
 from django.conf.urls import re_path
 from django.urls import path
 
@@ -17,7 +18,6 @@ non_searchable_urlpatterns = [
     path('interrupt_restore/', views.InterruptRestore.as_view()),
 
     path('change_backup_status/', views.ChangeBackupStatus.as_view()),
-
     path('init_data_dir/', views.InitDataDir.as_view()),
 
     path('ajax/', views.Ajax.as_view()),
@@ -30,7 +30,6 @@ searchable_urlpatterns = [
     path('update/', views.Update.as_view(), name='update_blockchain'),
     path('backup/', views.Backup.as_view(), name='backup_blockchain'),
     path('restore/', views.Restore.as_view(), name='restore_blockchain'),
-
     path('preferences/', views.ChangePreferences.as_view(), name='change_preferences'),
 
     re_path(r'^$', views.Home.as_view(), name='home'),

@@ -5,7 +5,7 @@
     class, e.g., test_backup.py
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-07
+    Last modified: 2020-11-05
 '''
 
 from ve import activate, virtualenv_dir
@@ -113,7 +113,7 @@ class TestViews(TestCase):
         response = views.Restore.as_view()(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(b'<title>\nBlockchain Backup restores lost access to your Bitcoin Core wallet | Blockchain Backup\n</title>' in response.content)
+        self.assertFalse(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b"Unable to Restore the Blockchain" in response.content)
         self.assertTrue(b'The Bitcoin binary directory is not valid. Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
         self.assertFalse(b"All updates after" in response.content)
@@ -127,7 +127,7 @@ class TestViews(TestCase):
         for host in ALLOWED_HOSTS:
             client = Client(HTTP_X_FORWARDED_FOR=host)
             response = client.get('/')
-            self.assertTrue(b'<title>\nBlockchain Backup restores lost access to your Bitcoin Core wallet | Blockchain Backup\n</title>' in response.content)
+            self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
             self.assertFalse(b'<title>\nNo Remote Access Permitted | Blockchain Backup\n</title>' in response.content)
             self.assertFalse(b'You can only access Blockchain Backup from the same machine' in response.content)
 

@@ -3,7 +3,7 @@
     Set up blockchain_backup.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-26
+    Last modified: 2020-11-06
 '''
 
 import os
@@ -13,7 +13,6 @@ import sys
 from shutil import copyfile
 from subprocess import CalledProcessError
 
-from denova.net.openssl import generate_certificate
 from denova.os.command import run, run_verbose
 from denova.os.fs import cd
 from denova.os.osid import is_windows
@@ -23,7 +22,7 @@ from denova.python.log import get_log
 log = get_log()
 
 SERVER_NAME = 'blockchain-backup.local'
-HOME_DIR = '/home'
+HOME_DIR = os.path.join(os.sep, 'home')
 
 def main():
 
@@ -33,6 +32,7 @@ def main():
 
     print('')
     print(f'--- Starting to set up Blockchain Backup for {user} ---')
+    pip_install_pkgs()
     config_logs(PROJECT_DIR, user)
     config_safelog()
 
@@ -46,34 +46,6 @@ def main():
     print(f"   Or go to https://{SERVER_NAME} and add a security exception.")
     print('')
 
-def get_user():
-    ''' Get the user that will run the bitcoin-core. '''
-
-    user = None
-
-    # look for a user with the .bitcoin subdirectory
-    users = 0
-    if os.path.exists(HOME_DIR):
-        entries = os.scandir(HOME_DIR)
-        for entry in entries:
-            if os.path.exists(os.path.join(entry.path, '.bitcoin')):
-                user = entry.name
-                users += 1
-
-    # if there's more than 1 user found,
-    # let the installer decide which to use
-    if users > 1:
-        user = None
-
-    while user is None or user.lower() == 'root':
-        print('\n')
-        print('Your Bitcoin Core wallet should not run as root.')
-        user = input("Username to use: ")
-        if user.lower() == 'root' or user.strip() == '':
-            user = None
-
-    return user
-
 def config_webserver(project_dir, user):
     ''' Configure a local webserver for blockchain backup. '''
 
@@ -84,16 +56,13 @@ def config_webserver(project_dir, user):
     with cd(CONFIG_DIR):
         config_special_settings(BLOCKCHAIN_BACKUP_PACKAGE_DIR)
         config_user(user)
+        make_executable()
         build_venv()
 
     config_perms(os.path.join(project_dir, 'data'), user)
-    # we want the user to be able to update blockchain_backup without requiring root access
-    config_perms(PACKAGES_DIR, user)
 
     print(' Configuring the web server')
     add_server_name_to_hosts()
-
-    config_systemd(user)
 
     # generate the ssl cert before the rest of the nginx config
     gen_nginx_ssl_cert()
@@ -192,6 +161,34 @@ def config_time_zone(dirname):
         else:
             log(f'{filename} not found')
 
+def get_user():
+    ''' Get the user that will run the bitcoin-core. '''
+
+    user = None
+
+    # look for a user with the .bitcoin subdirectory
+    users = 0
+    if os.path.exists(HOME_DIR):
+        entries = os.scandir(HOME_DIR)
+        for entry in entries:
+            if os.path.exists(os.path.join(entry.path, '.bitcoin')):
+                user = entry.name
+                users += 1
+
+    # if there's more than 1 user found,
+    # let the installer decide which to use
+    if users > 1:
+        user = None
+
+    while user is None or user.lower() == 'root':
+        print('\n')
+        print('Bitcoin Core should not run as root. You need to enter which user you want to run Bitcoin Core.')
+        user = input("Username to use: ")
+        if user.lower() == 'root' or user.strip() == '':
+            user = None
+
+    return user
+
 def config_user(user):
     ''' Configure the user name in the config files. '''
 
@@ -245,27 +242,10 @@ def config_perms(target_dir, user):
     run('chown', '-R', f'{user}:{user}', target_dir)
     run('chmod', '-R', 'u=rwx,g=rx,o=rx', target_dir)
 
-def config_systemd(user):
-    ''' Configure the user name in the systemd files. '''
+def make_executable():
+    ''' Configure config apps to be executable. '''
 
-    entries = os.scandir('/etc/systemd/system')
-    for entry in entries:
-        if entry.name.startswith('blockchain-backup'):
-            new_lines = []
-            lines = text_file.read(entry.path)
-            for line in lines:
-                if line.startswith('User='):
-                    new_lines.append(f'User={user}\n')
-                elif line.startswith('Group='):
-                    new_lines.append(f'Group={user}\n')
-                elif (line.endswith('--start user') or
-                      line.endswith('--stop user')):
-                    index = line.rfind(' user')
-                    new_lines.append(f'{line[:index]} {user}\n')
-                else:
-                    new_lines.append(line)
-
-            text_file.write(entry.path, new_lines)
+    run('chmod', '+x', 'safecopy')
 
 def add_server_name_to_hosts():
     ''' Add blockchain-backup.local to /etc/hosts. '''
@@ -293,6 +273,19 @@ def add_server_name_to_hosts():
     with open(HOSTS_FILENAME, 'wt') as output_file:
         output_file.write(''.join(new_lines))
 
+def pip_install_pkgs():
+    ''' Pip install packages needed during setup. '''
+
+    try:
+        pip_command = run('which', 'pip3').stdout.strip()
+        if not os.path.exists(pip_command):
+            pip_command = 'pip3'
+    except CalledProcessError as cpe:
+        pip_command = 'pip3'
+
+    # pip install without input and ignore if it already exists
+    run(pip_command, 'install', 'pexpect', '--no-input', '--exists-action', 'i')
+
 def config_logs(project_dir, primary_user):
     ''' Configure the log directory and logging server. '''
 
@@ -311,23 +304,7 @@ def config_logs(project_dir, primary_user):
 
     config_user_log_dir(os.path.join(MAIN_LOG_DIR, 'root'), 'root')
     config_user_log_dir(os.path.join(MAIN_LOG_DIR, 'www-data'), 'www-data')
-
-    entries = os.scandir(HOME_DIR)
-    for entry in entries:
-        if entry.is_dir():
-            user = entry.name
-            try:
-                # configure a subdirectory in the main log dir
-                config_user_log_dir(os.path.join(MAIN_LOG_DIR, user), user)
-            except CalledProcessError:
-                if user == primary_user:
-                    raise Exception(f'Unable to configure log directory for {user}')
-                else:
-                    pass
-
-    primary_user_log_dir = os.path.join(MAIN_LOG_DIR, primary_user)
-    if not os.path.exists(primary_user_log_dir):
-        config_user_log_dir(primary_user_log_dir, primary_user)
+    config_user_log_dir(os.path.join(MAIN_LOG_DIR, primary_user), primary_user)
 
 def config_safelog():
     ''' Configure safelog server from denova.com
@@ -339,12 +316,13 @@ def config_safelog():
     blockchain_backup_dir = os.path.join(packages_dir, 'blockchain_backup')
 
     # only copy the safelog script, if it doesn't already exist
-    safelog_path = os.path.join('/usr', 'sbin', 'safelog')
+    safelog_path = os.path.join(os.sep, 'usr', 'sbin', 'safelog')
     if not os.path.exists(safelog_path):
         copyfile(os.path.join(blockchain_backup_dir, 'config', 'safelog'), safelog_path)
+    run('chmod', 'u+rwx,g-rwx,o-rwx', safelog_path)
 
     # only copy the safelog service, if it doesn't already exist
-    safelog_service_path = os.path.join('/etc', 'systemd', 'system', 'safelog.service')
+    safelog_service_path = os.path.join(os.sep, 'etc', 'systemd', 'system', 'safelog.service')
     if not os.path.exists(safelog_service_path):
         copyfile(os.path.join(blockchain_backup_dir, 'config', 'safelog.service'), safelog_service_path)
         run('systemctl', 'enable', 'safelog')
@@ -362,7 +340,10 @@ def gen_nginx_ssl_cert():
         True
     '''
 
-    print(' Generating nginx certificate')
+    # import late so there's time to install pexpect
+    from denova.net.openssl import generate_certificate
+
+    print(' Generating a nginx certificate')
 
     DIR_NAME = '/etc/nginx/ssl/blockchain-backup'
 

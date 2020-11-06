@@ -2,7 +2,7 @@
     Forms for bitcoin.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-05
 '''
 
 import os
@@ -27,6 +27,8 @@ class RestoreForm(Form):
             >>> restoreForm = RestoreForm()
             >>> restoreForm is not None
             True
+            >>> isinstance(restoreForm.fields['backup_dates_with_dirs'], ChoiceField)
+            True
             >>> restoreForm.required
             False
         '''
@@ -35,6 +37,7 @@ class RestoreForm(Form):
         self.required = len(backup_dates) > 1
         self.fields['backup_dates_with_dirs'] = ChoiceField(
             choices=backup_dates, initial=preselected_date, required=self.required)
+
 
 class PreferencesForm(ModelForm):
 

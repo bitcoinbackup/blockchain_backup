@@ -2,7 +2,7 @@
     Bitcoin views
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-05
 '''
 
 import json
@@ -10,6 +10,7 @@ import os
 from abc import ABCMeta, abstractmethod
 from traceback import format_exc
 
+from django.db.utils import OperationalError
 from django.contrib import messages
 from django.forms import Form
 from django.http import HttpResponse, HttpResponseRedirect
@@ -20,7 +21,7 @@ from django.views.generic import TemplateView
 from blockchain_backup.bitcoin import constants, preferences, state
 from blockchain_backup.bitcoin.forms import PreferencesForm, RestoreForm
 from blockchain_backup.bitcoin import utils as bitcoin_utils
-from blockchain_backup.settings import ALLOWED_HOSTS
+from blockchain_backup.settings import ALLOWED_HOSTS, DATABASE_PATH
 from blockchain_backup.version import BLOCKCHAIN_BACKUP_VERSION
 from denova.django_addons.utils import get_remote_ip
 from denova.os.user import getdir, whoami
@@ -145,6 +146,7 @@ class Home(LocalAccessOnly):
         response = get_home_page_response(request, bcb_run_already, bin_dir_ok, params)
 
         return response
+
 
 class AccessWallet(LocalAccessOnly):
     '''
@@ -655,7 +657,10 @@ class ChangePreferences(LocalAccessOnly):
 
     def get_page(self, request):
 
-        prefs = preferences.get_preferences()
+        try:
+            prefs = preferences.get_preferences()
+        except OperationalError as oe:
+            report_operational_error(oe)
 
         try:
             if prefs.data_dir is None:
@@ -709,6 +714,7 @@ class ChangePreferences(LocalAccessOnly):
             response = render(request, self.form_url, {'form': form, })
 
         return response
+
 
 class InitDataDir(LocalAccessOnly):
     '''
@@ -1050,3 +1056,19 @@ def clear_action_updates():
 
     log('cleared action_updates')
     action_updates.clear()
+
+def report_operational_error(oe):
+    '''
+        Report operational error.
+
+        # oe should be an OperationalError, but we just
+        # use the string format so we'll simplify the test
+        >>> oe = 'Unable to write to database'
+        >>> report_operational_error(oe)
+        <HttpResponse status_code=200, "text/html; charset=utf-8">
+    '''
+
+    error_message = str(oe).capitalize()
+    log(f'{error_message}. Database in {DATABASE_PATH}')
+
+    return HttpResponse(f'{error_message}.<br/>Database in {DATABASE_PATH}')

@@ -3,7 +3,7 @@
     and the blockchain.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-05
 '''
 
 import os
@@ -440,8 +440,8 @@ def get_latest_core_version():
     '''
         Get the lastest bitcoin core version from online.
 
-        >>> from blockchain_backup.version import CORE_VERSION
         >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+        >>> from blockchain_backup.core_version import CORE_VERSION
         >>> latest_core_version = get_latest_core_version()
         >>> latest_core_version == CORE_VERSION
         True
@@ -607,12 +607,14 @@ def get_state():
         >>> isinstance(get_state(), State)
         True
     '''
-
     record = None
 
     try:
         record = State.objects.get()
     except State.DoesNotExist:
+        record = State()
+    except:  # 'bare except' because it catches more than "except Exception"
+        log(format_exc())
         record = State()
 
     return record
@@ -628,6 +630,6 @@ def save_state(record):
         try:
             record.save()
         except: # 'bare except' because it catches more than "except Exception"
-            log('tried to save butcoin.state')
+            log('tried to save bitcoin.state')
             log(format_exc())
             raise

@@ -2,7 +2,7 @@
     Django settings for blockchain_backup project.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-04
 '''
 
 import os.path
@@ -17,9 +17,10 @@ from denova.django_addons.settings_shared import *
 DEBUG = True
 
 PROJECT_PATH = os.path.realpath(os.path.abspath(os.path.dirname(__file__).replace('\\','/')))
+# the data dir is in different places for development and finall installation
 DATA_DIR = os.path.abspath(os.path.join(PROJECT_PATH, '..', 'data'))
-LOGS_DIR = os.path.join(DATA_DIR, 'logs')
-DEBUG_DIR = os.path.join(LOGS_DIR, 'debug')
+# linux home dir
+HOME_DIR = '/home'
 
 TOP_LEVEL_DOMAIN = 'blockchain_backup'
 
