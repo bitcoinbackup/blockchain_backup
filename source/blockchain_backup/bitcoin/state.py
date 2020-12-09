@@ -3,7 +3,7 @@
     and the blockchain.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-11-05
+    Last modified: 2020-12-04
 '''
 
 import os
@@ -457,9 +457,11 @@ def get_latest_core_version():
 
     try:
         state_settings = get_state()
-        latest_core_version = state_settings.latest_core_version
-        if latest_core_version is None:
-            latest_core_version = get_bitcoin_version()
+        latest_version = state_settings.latest_core_version
+        if latest_version:
+            latest_core_version = latest_version
+    except PermissionError:
+        log('permission error while getting bitcoin version')
     except: # 'bare except' because it catches more than "except Exception"
         log(format_exc())
 
@@ -612,6 +614,9 @@ def get_state():
     try:
         record = State.objects.get()
     except State.DoesNotExist:
+        record = State()
+    except OperationalError as oe:
+        log(str(oe))
         record = State()
     except:  # 'bare except' because it catches more than "except Exception"
         log(format_exc())

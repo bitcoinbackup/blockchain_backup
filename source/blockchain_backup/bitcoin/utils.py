@@ -2,7 +2,7 @@
     Utilities for blockchain backup.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-11-04
+    Last modified: 2020-12-08
 '''
 
 import json
@@ -213,14 +213,11 @@ def get_bitcoin_version():
             log(f'unable to find version; stdout: {stdout}')
 
     except FileNotFoundError:
-        log(f'command args: {command_args}')
-        log('FileNotFoundError')
+        log(f'FileNotFoundError: {command_args}')
     except PermissionError:
-        log(f'command args: {command_args}')
-        log('PermissionError')
+        log(f'PermissionError: {command_args}')
     except: # 'bare except' because it catches more than "except Exception"
-        log('unable to get bitcoin core version')
-        log(f'command args: {command_args}')
+        log('unable to get bitcoin core version: {command_args}')
 
     return bitcoin_core_version
 
@@ -664,6 +661,7 @@ def check_for_updates(current_time=None, force=False, reason=None):
         >>> check_for_updates()
         True
     '''
+
     updates_checked = False
 
     try:
@@ -678,10 +676,11 @@ def check_for_updates(current_time=None, force=False, reason=None):
             state.set_last_update_time(current_time)
 
             command_args = []
+            command_args.append('python3')
             # get the path for check_for_updates.py, regardless of virtualenv, etc.
-            program = os.path.realpath(os.path.join(
-              os.path.dirname(blockchain_backup_file), 'config', 'check_for_updates.py'))
-            command_args.append(program)
+            check_program = os.path.realpath(os.path.abspath(os.path.join(
+              os.path.dirname(blockchain_backup_file), 'config', 'check_for_updates.py')))
+            command_args.append(check_program)
             if reason is not None:
                 command_args.append(reason)
             background(*command_args)
@@ -696,7 +695,9 @@ def get_path_of_core_apps():
     '''
         Get the path of the bitcoin core apps.
 
-        >>> get_path_of_core_apps()
+        >>> bin_dir = get_path_of_core_apps()
+        >>> len(bin_dir) > 0
+        True
     '''
     bin_dir = None
 

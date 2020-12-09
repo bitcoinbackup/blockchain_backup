@@ -13,7 +13,9 @@ A full manual and source code documentation are at:
 Change Log
 ----------
 
-  * Report error if database is inaccessible.
+  * Install safecopy, safelog, and the denova package from PyPI.
+  * Do not include the thirdparty django_singleton_admin package.
+  * Do not include the denova package, safecopy, or safelog.
 
 
 Full Description

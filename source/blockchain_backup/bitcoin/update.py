@@ -1,6 +1,6 @@
 '''
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-11-08
 '''
 
 import os
@@ -35,20 +35,42 @@ class UpdateTask(Thread):
     BITCOIND_ERROR_LABEL = '<strong>The Bitcoin Core program, bitcoind, Error:</strong>'
 
     def __init__(self):
-        Thread.__init__(self)
+        '''
+            Initialize the update task.
 
-        self._interrupt = False
+            >>> update_task = UpdateTask()
+            >>> update_task is not None
+            True
+            >>> update_task.__init__()
+            >>> update_task._interrupted
+            False
+            >>> update_task.manager is None
+            True
+            >>> update_task.log_name
+            'blockchain_backup.bitcoin.update.log'
+        '''
+        self._interrupted = False
+        self.manager = None
 
         self.log = get_log()
         self.log_name = os.path.basename(get_log_path())
 
         self.current_block = state.get_last_block_updated()
 
-        self.manager = None
+        Thread.__init__(self)
 
     def interrupt(self):
-        ''' Set to true when user clicks the Stop button. '''
-        self._interrupt = True
+        '''
+            Set to true when user clicks the Stop button.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.interrupt()
+            >>> update_task._interrupted
+            True
+        '''
+        self._interrupted = True
         if self.manager:
             self.manager.update_progress(self.STOPPING_UPDATE)
 
@@ -62,10 +84,28 @@ class UpdateTask(Thread):
                 self.log(format_exc())
 
     def is_interrupted(self):
-        ''' Returns true if user clicked the Stop button. '''
-        return self._interrupt
+        '''
+            Returns true if user clicked the Stop button.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.is_interrupted()
+            False
+        '''
+        return self._interrupted
 
     def run(self):
+        '''
+            Start the update task.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.run()
+            >>> update_task.is_interrupted()
+            False
+        '''
 
         self.log('started UpdateTask')
         try:
@@ -81,6 +121,7 @@ class UpdateTask(Thread):
             try:
                 if self.is_interrupted():
                     ok = True
+                    self.log('self interrupted before update started')
                 else:
                     # don't start the update if a backup needs to be run
                     UNKNOWN_BLOCKS = -1
@@ -110,7 +151,15 @@ class UpdateTask(Thread):
         self.log('ended UpdateTask')
 
     def update(self):
-        ''' Update the blockchain using bitcoind. '''
+        '''
+            Update the blockchain using bitcoind.
+
+            Returns whether the update ended successfully and
+                    whether a backup should start.
+
+            If any errors while running, bitcoind, disable automatic
+            backups so the user can decide how to proceed.
+        '''
 
         ok = need_backup = False
         error_message = None
@@ -162,6 +211,15 @@ class UpdateTask(Thread):
     def start_bitcoind(self):
         '''
             Start bitcoind as a daemon.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> need_backup = False
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.manager = BitcoinManager(update_task.log_name)
+            >>> bitcoind_process, bitcoind_pid = update_task.start_bitcoind()
+            >>> update_task.stop_bitcoind(bitcoind_process, bitcoind_pid, need_backup)
+            (False, ' Error opening block database.\\n')
         '''
         if is_bitcoind_running():
             bitcoind_process = None
@@ -218,6 +276,17 @@ class UpdateTask(Thread):
     def wait_while_updating(self, bitcoind_process):
         '''
             Wait for the blockchain to be updated.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.manager = BitcoinManager(update_task.log_name)
+            >>> bitcoind_process, bitcoind_pid = update_task.start_bitcoind()
+            >>> need_backup = update_task.wait_while_updating(bitcoind_process)
+            >>> print(need_backup)
+            False
+            >>> update_task.stop_bitcoind(bitcoind_process, bitcoind_pid, need_backup)
+            (False, ' Error opening block database.\\n')
         '''
         def get_secs_to_wait():
             ''' Wait longer if no real data available yet. '''
@@ -262,6 +331,9 @@ class UpdateTask(Thread):
                 need_backup = need_to_backup(self.manager.data_dir, self.current_block)
                 secs_to_wait = get_secs_to_wait()
 
+        self.log(f'is_bitcoind_running: {is_bitcoind_running()}')
+        self.log(f'need_backup: {need_backup}')
+        self.log(f'is_interrupted: {self.is_interrupted()}')
         self.log(f'finished waiting; need backup: {need_backup}')
 
         return need_backup
@@ -269,6 +341,23 @@ class UpdateTask(Thread):
     def stop_bitcoind(self, bitcoind_process, bitcoind_pid, need_backup):
         '''
             Stop bitcoind and determine if it ended properly.
+
+            Returns:
+                True if shutdown successful; otherwise False.
+                Any error message or None.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> need_backup = False
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.manager = BitcoinManager(update_task.log_name)
+            >>> bitcoind_process, bitcoind_pid = update_task.start_bitcoind()
+            >>> ok, error_message = update_task.stop_bitcoind(bitcoind_process, bitcoind_pid, need_backup)
+            >>> print(ok)
+            False
+            >>> print(error_message)
+             Error opening block database.
+            <BLANKLINE>
         '''
         def update_progress():
             # only update progress if it hasn't been blanked at an earlier time
@@ -302,7 +391,17 @@ class UpdateTask(Thread):
         return ok, error_message
 
     def wait_for_shutdown(self, bitcoind_process, bitcoind_pid, need_backup):
-        ''' Wait for bitcoind to shutdown. '''
+        '''
+            Wait for bitcoind to shutdown.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> need_backup = False
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.manager = BitcoinManager(update_task.log_name)
+            >>> bitcoind_process, bitcoind_pid = update_task.start_bitcoind()
+            >>> update_task.wait_for_shutdown(bitcoind_process, bitcoind_pid, need_backup)
+        '''
 
         try:
             if is_bitcoind_running():
@@ -330,6 +429,13 @@ class UpdateTask(Thread):
             Retry sending the stop command.
             At times, the process might end, but
             bitcoin itself is still running.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> need_backup = False
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.manager = BitcoinManager(update_task.log_name)
+            >>> update_task.retry_stopping()
         '''
         MAX_SECONDS = 30
 
@@ -345,8 +451,22 @@ class UpdateTask(Thread):
                     self.manager.update_progress(self.STOPPING_UPDATE)
 
     def wait_for_status(self):
-        ''' Wait for bitcoin to clean up. '''
+        '''
+            Wait for bitcoin to clean up.
 
+            Returns
+                True if bitcoin shutdown successfully; otherwise, False.
+                Error message from bitcoind if this is one; otherwise, None.
+                Seconds waiting.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> need_backup = False
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.manager = BitcoinManager(update_task.log_name)
+            >>> update_task.wait_for_status()
+            (True, None, 0)
+        '''
         WAIT_SECONDS = 10
         MAX_SECONDS = 60
 
@@ -369,8 +489,18 @@ class UpdateTask(Thread):
         return ok, error_message, seconds
 
     def report_error(self, bitcoind_process, bitcoind_pid, error_message, seconds):
-        ''' Report a serious error about stopping bitcoind. '''
+        '''
+            Report a serious error about stopping bitcoind.
 
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.manager = BitcoinManager(update_task.log_name)
+            >>> bitcoind_process, bitcoind_pid = update_task.start_bitcoind()
+            >>> need_backup = False
+            >>> ok, error_message = update_task.stop_bitcoind(bitcoind_process, bitcoind_pid, need_backup)
+            >>> update_task.report_error(bitcoind_process, bitcoind_pid, error_message, 60)
+        '''
         # let the user know a serious error has happened
         if is_bitcoind_running():
             if bitcoind_process is None and bitcoind_pid is None:
@@ -391,6 +521,13 @@ class UpdateTask(Thread):
     def report_update_stopped(self, ok, error):
         '''
             Report to the user that bitcoind stopped.
+
+            >>> from blockchain_backup.bitcoin.tests import utils as test_utils
+            >>> test_utils.init_database()
+            >>> update_task = UpdateTask()
+            >>> update_task.manager = BitcoinManager(update_task.log_name)
+            >>> ok = False
+            >>> update_task.report_update_stopped(ok, 'Unknown error')
         '''
         # a new page might have been displayed
         # so give socketio time to connect

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 '''
-    Configure links to the local python3 lib
-    so setup.py can run which uses libraries
-    not accessible from pypi.
+    Install and configure denova package
+    and the ve module.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-14
+    Last modified: 2020-12-03
 '''
 
 import os
@@ -17,7 +16,13 @@ def main():
     if python_needs_patch():
         patch_python35_lib()
 
-    setup_python3_lib()
+    install_denova_package()
+
+def install_denova_package():
+    ''' Install the denova packages from pypi. '''
+
+    args = ['pip3', 'install', '--upgrade', 'denova']
+    subprocess.run(args, check=True)
 
 def python_needs_patch():
     ''' Return true if running python 3.5.3 or earlier. '''
@@ -52,37 +57,6 @@ def patch_python35_lib():
         if changed_lines:
             with open(filename, 'wt') as output_file:
                 output_file.write(''.join(lines))
-
-def setup_python3_lib():
-    '''
-        Find the local dist-packages and
-        add links to the denova package.
-    '''
-
-    # find the local dist-packages path
-    lib_dir = None
-    sys_path = sys.path
-    for path in sys_path:
-        if 'dist-packages' in path:
-            if lib_dir is None:
-                lib_dir = path
-            elif 'local/lib/python' in path:
-                lib_dir = path
-
-    if lib_dir is None:
-        lib_dir = '/usr/lib/python3/dist-packages'
-
-    current_dir = os.path.abspath(os.path.dirname(__file__)).replace('\\','/')
-    packages_dir = os.path.realpath(os.path.abspath(os.path.join(current_dir, '..', '..')))
-    link_lib(lib_dir, os.path.join(packages_dir, 'denova'))
-    link_lib(lib_dir, os.path.join(packages_dir, 'denova', 'python', 've.py'))
-
-def link_lib(lib_dir, original_path):
-    ''' Link a file/directory to the python3 lib. '''
-
-    if not os.path.exists(os.path.join(lib_dir, os.path.basename(original_path))):
-        args = ['ln', '-s', original_path, lib_dir]
-        subprocess.run(args, check=True)
 
 
 if __name__ == "__main__":

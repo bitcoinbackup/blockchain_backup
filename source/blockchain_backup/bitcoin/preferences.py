@@ -2,14 +2,16 @@
     Manage blockchain_backup prefs.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-11-05
+    Last modified: 2020-12-05
 '''
 
 import os
 from shutil import rmtree
 from traceback import format_exc
 
+from django.contrib import messages
 from django.db import transaction
+from django.db.utils import OperationalError
 
 from blockchain_backup.bitcoin import constants
 from blockchain_backup.bitcoin.models import Preferences
@@ -360,6 +362,9 @@ def get_preferences():
     try:
         record = Preferences.objects.get()
     except Preferences.DoesNotExist:
+        record = Preferences()
+    except OperationalError as oe:
+        log(str(oe))
         record = Preferences()
     except:  # 'bare except' because it catches more than "except Exception"
         log(format_exc())

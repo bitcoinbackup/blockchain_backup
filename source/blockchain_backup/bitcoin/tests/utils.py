@@ -2,7 +2,7 @@
     Utilities for bitcoin tests.
 
     Copyright 2019-2020 DeNova
-    Last modified: 2020-11-06
+    Last modified: 2020-12-08
 '''
 
 import os
@@ -82,7 +82,7 @@ def copy_bitcoin_binaries(to_dir):
         >>> if os.path.exists(TEMP_DIR):
         ...     shutil.rmtree(TEMP_DIR)
         >>> copy_bitcoin_binaries(TEMP_DIR)
-        False
+        True
         >>> if os.path.exists(TEMP_DIR):
         ...     shutil.rmtree(TEMP_DIR)
     '''
@@ -91,7 +91,7 @@ def copy_bitcoin_binaries(to_dir):
         ok = False
 
         full_path = command.run('which', filename).stdout.strip()
-        if full_path > 0 and os.path.exists(full_path):
+        if len(full_path) > 0 and os.path.exists(full_path):
             shutil.copy(full_path,  to_dir)
             ok = True
 
@@ -420,10 +420,15 @@ def start_fake_backup():
         so we can test for the app to be running.
 
         >>> start_fake_backup()
+        >>> bin_dir = os.path.join(virtualenv_dir(), 'bin')
+        >>> sleep(15)
+        >>> args = [os.path.join(bin_dir, 'killmatch'), constants.BACKUP_PROGRAM]
+        >>> result = command.run(*args)
     '''
 
+    bin_dir = os.path.join(virtualenv_dir(), 'bin')
     config_dir = os.path.join(PROJECT_PATH, 'config')
-    args = [os.path.join(config_dir, constants.BACKUP_PROGRAM), config_dir, '/tmp']
+    args = [os.path.join(bin_dir, constants.BACKUP_PROGRAM), config_dir, '/tmp']
     command.background(*args)
 
 def stop_backup():
@@ -450,10 +455,15 @@ def start_fake_restore():
         so we can test for the app to be running.
 
         >>> start_fake_restore()
+        >>> bin_dir = os.path.join(virtualenv_dir(), 'bin')
+        >>> sleep(15)
+        >>> args = [os.path.join(bin_dir, 'killmatch'), constants.RESTORE_PROGRAM]
+        >>> result = command.run(*args)
     '''
 
+    bin_dir = os.path.join(virtualenv_dir(), 'bin')
     config_dir = os.path.join(PROJECT_PATH, 'config')
-    args = [os.path.join(config_dir, constants.RESTORE_PROGRAM), config_dir, '/tmp']
+    args = [os.path.join(bin_dir, constants.RESTORE_PROGRAM), config_dir, '/tmp']
     command.background(*args)
 
 def stop_restore():

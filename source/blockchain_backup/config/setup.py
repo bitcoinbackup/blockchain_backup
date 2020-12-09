@@ -3,7 +3,7 @@
     Set up blockchain_backup.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-11-06
+    Last modified: 2020-12-04
 '''
 
 import os
@@ -32,9 +32,14 @@ def main():
 
     print('')
     print(f'--- Starting to set up Blockchain Backup for {user} ---')
-    pip_install_pkgs()
+
+    pip3_command = get_pip3_command()
+
+    # set up logging so if anything goes wrong, we'll have more info
     config_logs(PROJECT_DIR, user)
-    config_safelog()
+    install_config_safelog(pip3_command)
+
+    pip_install_pkgs(pip3_command)
 
     config_webserver(PROJECT_DIR, user)
     print('--- Finished setting up Blockchain Backup ---')
@@ -56,7 +61,6 @@ def config_webserver(project_dir, user):
     with cd(CONFIG_DIR):
         config_special_settings(BLOCKCHAIN_BACKUP_PACKAGE_DIR)
         config_user(user)
-        make_executable()
         build_venv()
 
     config_perms(os.path.join(project_dir, 'data'), user)
@@ -195,6 +199,7 @@ def config_user(user):
     ACCESS_LOG = "accesslog='/var/local/log/{}/blockchain_backup.gunicorn.access.log'\n"
     ERROR_LOG = "errorlog='/var/local/log/{}/blockchain_backup.gunicorn.error.log'\n"
 
+    # scan all the files in blockchain backup's config directory
     entries = os.scandir('.')
     for entry in entries:
         if entry.name.endswith('.ini') or entry.name == 'gunicorn.conf.py':
@@ -242,11 +247,6 @@ def config_perms(target_dir, user):
     run('chown', '-R', f'{user}:{user}', target_dir)
     run('chmod', '-R', 'u=rwx,g=rx,o=rx', target_dir)
 
-def make_executable():
-    ''' Configure config apps to be executable. '''
-
-    run('chmod', '+x', 'safecopy')
-
 def add_server_name_to_hosts():
     ''' Add blockchain-backup.local to /etc/hosts. '''
 
@@ -273,19 +273,6 @@ def add_server_name_to_hosts():
     with open(HOSTS_FILENAME, 'wt') as output_file:
         output_file.write(''.join(new_lines))
 
-def pip_install_pkgs():
-    ''' Pip install packages needed during setup. '''
-
-    try:
-        pip_command = run('which', 'pip3').stdout.strip()
-        if not os.path.exists(pip_command):
-            pip_command = 'pip3'
-    except CalledProcessError as cpe:
-        pip_command = 'pip3'
-
-    # pip install without input and ignore if it already exists
-    run(pip_command, 'install', 'pexpect', '--no-input', '--exists-action', 'i')
-
 def config_logs(project_dir, primary_user):
     ''' Configure the log directory and logging server. '''
 
@@ -306,27 +293,29 @@ def config_logs(project_dir, primary_user):
     config_user_log_dir(os.path.join(MAIN_LOG_DIR, 'www-data'), 'www-data')
     config_user_log_dir(os.path.join(MAIN_LOG_DIR, primary_user), primary_user)
 
-def config_safelog():
-    ''' Configure safelog server from denova.com
-        if they are not already installed and running.
+def install_config_safelog(pip3_command):
+    ''' Install and configure safelog server and
+        configure safelog service.
     '''
+    PYPI_SERVICE_PATH = os.path.join(os.sep, 'usr', 'local', 'systemd', 'user', 'safelog.service')
 
-    current_dir = os.path.abspath(os.path.dirname(__file__)).replace('\\','/')
-    packages_dir = os.path.realpath(os.path.abspath(os.path.join(current_dir, '..', '..')))
-    blockchain_backup_dir = os.path.join(packages_dir, 'blockchain_backup')
-
-    # only copy the safelog script, if it doesn't already exist
-    safelog_path = os.path.join(os.sep, 'usr', 'sbin', 'safelog')
-    if not os.path.exists(safelog_path):
-        copyfile(os.path.join(blockchain_backup_dir, 'config', 'safelog'), safelog_path)
-    run('chmod', 'u+rwx,g-rwx,o-rwx', safelog_path)
+    run(pip3_command, 'install', '--upgrade', 'safelog')
 
     # only copy the safelog service, if it doesn't already exist
     safelog_service_path = os.path.join(os.sep, 'etc', 'systemd', 'system', 'safelog.service')
     if not os.path.exists(safelog_service_path):
-        copyfile(os.path.join(blockchain_backup_dir, 'config', 'safelog.service'), safelog_service_path)
-        run('systemctl', 'enable', 'safelog')
-        run('systemctl', 'start', 'safelog')
+        if os.path.exists(PYPI_SERVICE_PATH):
+            copyfile(PYPI_SERVICE_PATH, safelog_service_path)
+            run('systemctl', 'enable', 'safelog')
+            run('systemctl', 'start', 'safelog')
+        else:
+            print('Unable to find safelog service file. Logging disabled.')
+
+def pip_install_pkgs(pip3_command):
+    ''' Pip install packages needed during setup. '''
+
+    # pip install without input and ignore if it already exists
+    run(pip3_command, 'install', 'pexpect', '--no-input', '--exists-action', 'i')
 
 def gen_nginx_ssl_cert():
     '''
@@ -355,6 +344,18 @@ def gen_nginx_ssl_cert():
         generate_certificate(SERVER_NAME, DIR_NAME, name=SERVER_NAME)
 
     return 'New nginx certificate generated'
+
+def get_pip3_command():
+    ''' Return the full path to pip3. '''
+
+    try:
+        pip_command = run('which', 'pip3').stdout.strip()
+        if not os.path.exists(pip_command):
+            pip_command = 'pip3'
+    except CalledProcessError as cpe:
+        pip_command = 'pip3'
+
+    return pip_command
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
     Run the doctests.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-17
+    Last modified: 2020-11-08
 '''
 
 from ve import activate, virtualenv_dir
@@ -22,6 +22,7 @@ import blockchain_backup.bitcoin.nonce
 import blockchain_backup.bitcoin.preferences
 import blockchain_backup.bitcoin.restore
 import blockchain_backup.bitcoin.state
+import blockchain_backup.bitcoin.update
 import blockchain_backup.bitcoin.utils
 import blockchain_backup.bitcoin.views
 from blockchain_backup.bitcoin.tests import utils as test_utils
@@ -92,6 +93,13 @@ class TestDoctests(TestCase):
 
         # includes approximately 20 doctests
         test_result = doctest.testmod(blockchain_backup.bitcoin.state, report=True)
+        self.assertEqual(test_result[0], 0)
+
+    def test_update(self):
+        ''' Run the update doctests. '''
+
+        # includes approximately 14 doctests
+        test_result = doctest.testmod(blockchain_backup.bitcoin.update, report=True)
         self.assertEqual(test_result[0], 0)
 
     def test_utils(self):
