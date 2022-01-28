@@ -1,8 +1,8 @@
 '''
     Blockchain Backup version.
 
-    Copyright 2020 DeNova
-    Last modified: 2020-11-30
+    Copyright 2020-2022 DeNova
+    Last modified: 2022-01-25
 '''
 
-BLOCKCHAIN_BACKUP_VERSION = '1.3.3'
+CURRENT_VERSION = '1.3.4'

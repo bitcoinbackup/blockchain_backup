@@ -1,8 +1,8 @@
 '''
     Django settings for blockchain_backup project.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-12-04
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-01-13
 '''
 
 import os.path
@@ -44,18 +44,17 @@ STATIC_ROOT = os.path.join(PROJECT_PATH, 'static')
 # other dirs with static files
 STATICFILES_DIRS = (
     DJANGO_ADDONS_STATIC_DIR,
-    os.path.join(PROJECT_PATH, ' ../../../'),
+    os.path.abspath(os.path.join(PROJECT_PATH, ' ../../../')),
 )
 
 SITE_ID = 1
 
 # database
-DATABASE_NAME = 'sqlite3.db'
-DATABASE_DIR = os.path.join(DATA_DIR, 'db')
-DATABASE_PATH = os.path.join(DATABASE_DIR, DATABASE_NAME)
+DATABASE_PATH = os.path.join(DATA_DIR, 'db')
+DATABASE_NAME = os.path.join(DATABASE_PATH, 'sqlite3.db')
 DEFAULT_DATABASE = {
     'ENGINE': 'django.db.backends.sqlite3',
-    'NAME': DATABASE_PATH,
+    'NAME': DATABASE_NAME,
     'OPTIONS': {
         'timeout': 20,
     }
@@ -90,7 +89,7 @@ TEMPLATES = [
 
 
 # Application definition
-INSTALLED_APPS = INSTALLED_APPS + (
+INSTALLED_APPS = INSTALLED_APPS + [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -99,7 +98,7 @@ INSTALLED_APPS = INSTALLED_APPS + (
 
     'blockchain_backup',
     'blockchain_backup.bitcoin',
-)
+]
 
 MIDDLEWARE_CLASSES = MIDDLEWARE
 
@@ -121,13 +120,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-CONNECTION_HEARTBEAT = '--heartbeat--'
-
-USE_SOCKETIO = False
-
-if USE_SOCKETIO:
-    SOCKETIO_URL_PREFIX = 'ws'
-    SOCKETIO_URL = f'/{SOCKETIO_URL_PREFIX}/'
+# create a custom view for CSRF errors
+CSRF_FAILURE_VIEW = f'{TOP_LEVEL_DOMAIN}.views.csrf_failure'
 
 DJANGO_PORT = 8962
-SOCKETIO_PORT = 8963
