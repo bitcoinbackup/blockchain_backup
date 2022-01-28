@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% comment %}
-    Copyright 2019-2020 DeNova
-    Last modified: 2020-09-25
+    Copyright 2019-2022 DeNova
+    Last modified: 2022-01-25
 {% endcomment %}
 
 {% load i18n %}
@@ -18,12 +18,13 @@
 {% block mainpane %}
 <p class="dropcap">
     Bitcoin Core is installed,
-    but the data and backup directories aren't where expected.
+    but you need to configure the data and backup directories.
 </p>
 
 <p>
-    Set the data and backup directories in
+    Click the
     {% include 'bitcoin/clips/preferences_button.html' %}
+    button to configure the data and backup directories.
 </p>
 {% endblock mainpane %}
 
