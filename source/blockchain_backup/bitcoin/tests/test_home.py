@@ -1,8 +1,8 @@
 '''
     Tests for the home page.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-11-05
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-01-25
 '''
 
 from ve import activate, virtualenv_dir
@@ -19,11 +19,10 @@ from blockchain_backup.bitcoin import preferences, state
 from blockchain_backup.bitcoin.models import Preferences, State
 from blockchain_backup.bitcoin.tests import utils as test_utils
 from blockchain_backup.bitcoin.views import get_home_page_response
-from blockchain_backup.core_version import CORE_VERSION
-from blockchain_backup.version import BLOCKCHAIN_BACKUP_VERSION
-from denova.python.log import get_log
+from blockchain_backup.version import CURRENT_VERSION
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 class TestHome(TestCase):
 
@@ -41,10 +40,8 @@ class TestHome(TestCase):
         backup_dir_ok = False
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -55,8 +52,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -84,10 +79,8 @@ class TestHome(TestCase):
         backup_dir_ok = False
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -98,8 +91,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -110,7 +101,7 @@ class TestHome(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'Blockchain Backup is Almost Ready | Blockchain Backup' in response.content)
         self.assertTrue(b'Bitcoin Core is installed' in response.content)
-        self.assertTrue(b"but the data and backup directories aren't where expected" in response.content)
+        self.assertTrue(b"but you need to configure the data and backup directories." in response.content)
         self.assertFalse(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertFalse(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
         self.assertFalse(b'<a href="/bitcoin/backup/" name="back-up-button" id="back-up-id" class="btn btn-secondary btn-block" role="button"  title="Back up the blockchain"> <strong>Back up </strong> </a>' in response.content)
@@ -128,10 +119,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -142,8 +131,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -172,10 +159,8 @@ class TestHome(TestCase):
         backup_dir_ok = False
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -186,8 +171,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -217,10 +200,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = True
         last_backed_up_time = None
         params = {
@@ -231,8 +212,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -278,10 +257,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = True
         last_backed_up_time = None
         params = {
@@ -292,8 +269,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -331,10 +306,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = True
         last_backed_up_time = None
         params = {
@@ -345,8 +318,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -363,7 +334,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'denova_reactivated.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup Adds Resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/backup/" name="back-up-button" id="back-up-id" class="btn btn-secondary btn-block" role="button"  title="Back up the blockchain"> <strong>Back up </strong> </a>' in response.content)
@@ -381,10 +352,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -395,8 +364,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -405,7 +372,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'active_user_all_good.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup Adds Resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/backup/" name="back-up-button" id="back-up-id" class="btn btn-secondary btn-block" role="button"  title="Back up the blockchain"> <strong>Back up </strong> </a>' in response.content)
@@ -424,10 +391,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = True
         last_backed_up_time = None
         params = {
@@ -438,8 +403,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -448,7 +411,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'active_user_all_good.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup Adds Resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'Your blockchain was last backed up at' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
@@ -468,10 +431,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = False
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -482,8 +443,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -492,7 +451,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'active_user_need_bcb_upgrade.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup Adds Resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'You are not running the latest version of' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
@@ -512,10 +471,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = '0.17.1'
-        core_up_to_date = False
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -526,8 +483,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -536,8 +491,7 @@ class TestHome(TestCase):
         self.save_page(response.content, 'active_user_need_core_upgrade.html')
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(b'<title>\nBlockchain Backup adds resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
-        self.assertTrue(b'upgrade Bitcoin Core' in response.content)
+        self.assertTrue(b'<title>\nBlockchain Backup Adds Resilience to Bitcoin Core | Blockchain Backup\n</title>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/access_wallet/" name="access-wallet-button" id="access-wallet-id" class="btn btn-secondary btn-block" role="button"  title="Access your Bitcoin Core wallet"> <strong>Access<br/>wallet </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/update/" name="update-blockchain-button" id="update-blockchain-id" class="btn btn-secondary btn-block" role="button"  title="Update the blockchain"> <strong>Update<br/>blockchain </strong> </a>' in response.content)
         self.assertTrue(b'<a href="/bitcoin/backup/" name="back-up-button" id="back-up-id" class="btn btn-secondary btn-block" role="button"  title="Back up the blockchain"> <strong>Back up </strong> </a>' in response.content)
@@ -555,10 +509,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -569,8 +521,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -598,10 +548,8 @@ class TestHome(TestCase):
         backup_dir_ok = True
         backup_dir_error = None
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -612,8 +560,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -641,10 +587,8 @@ class TestHome(TestCase):
         backup_dir_ok = False
         backup_dir_error = 'Unable to create'
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -655,8 +599,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -687,10 +629,8 @@ class TestHome(TestCase):
         backup_dir_ok = False
         backup_dir_error = 'Unable to write to the backup dir in'
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -701,8 +641,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
@@ -733,10 +671,8 @@ class TestHome(TestCase):
         backup_dir_ok = False
         backup_dir_error = 'The backup and data directories must be different.'
         need_backup = True
-        last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+        last_bcb_version = CURRENT_VERSION
         bcb_up_to_date = True
-        last_core_version = CORE_VERSION
-        core_up_to_date = True
         need_backup = False
         last_backed_up_time = None
         params = {
@@ -747,8 +683,6 @@ class TestHome(TestCase):
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
                   'bcb_up_to_date': bcb_up_to_date,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date': core_up_to_date,
                   'need_backup': need_backup,
                   'last_backed_up_time': last_backed_up_time,
                  }
