@@ -1,12 +1,11 @@
 '''
     Bitcoin  urls.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-11-05
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-01-10
 '''
 
-from django.conf.urls import re_path
-from django.urls import path
+from django.urls import path, re_path
 
 from blockchain_backup.bitcoin import views
 
@@ -20,7 +19,10 @@ non_searchable_urlpatterns = [
     path('change_backup_status/', views.ChangeBackupStatus.as_view()),
     path('init_data_dir/', views.InitDataDir.as_view()),
 
-    path('ajax/', views.Ajax.as_view()),
+    # long polling updates
+    re_path(r'page_updates/?', views.UpdatePage.as_view()),
+    # short polling updates
+    re_path(r'ajax/?', views.Ajax.as_view ()),
 ]
 
 # "name" all patterns you want included in the sitemap.xml

@@ -1,13 +1,13 @@
 '''
     Models for bitcoin core.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-11-05
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-01-10
 '''
 
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 
 MAX_LENGTH = 1000 # default max length
@@ -105,9 +105,6 @@ class State(models.Model):
 
     latest_bcb_version = models.CharField(max_length=MAX_LENGTH, null=True, blank=True,
         help_text='Lastest version of blockchain backup available.')
-
-    latest_core_version = models.CharField(max_length=MAX_LENGTH, null=True, blank=True,
-        help_text='Lastest version of bitcoin core available.')
 
     email = models.EmailField(null=True, blank=True)
 

@@ -2,8 +2,8 @@
     Maintain the state of blockchain_backup
     and the blockchain.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-12-04
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-01-17
 '''
 
 import os
@@ -11,14 +11,16 @@ from datetime import datetime
 from traceback import format_exc
 
 from django.db import transaction
+from django.db.utils import OperationalError
 from django.utils.timezone import now, utc
 
 from blockchain_backup.bitcoin import constants, preferences
 from blockchain_backup.bitcoin.models import State
-from blockchain_backup.version import BLOCKCHAIN_BACKUP_VERSION
-from denova.python.log import get_log
+from blockchain_backup.settings import DATABASE_NAME
+from blockchain_backup.version import CURRENT_VERSION
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 def get_last_block_updated():
     '''
@@ -183,16 +185,9 @@ def set_start_access_time(start_access_time):
     '''
         Set the start_time bitcoind or bitcoin-qt run through Blockchain Backup.
 
-        >>> from pytz import timezone
-        >>> from blockchain_backup.settings import TIME_ZONE
         >>> from blockchain_backup.bitcoin.tests import utils as test_utils
         >>> test_utils.init_database()
         >>> set_start_access_time(datetime(2009, 1, 12, 0, 0, tzinfo=utc))
-        >>> get_start_access_time()
-        datetime.datetime(2009, 1, 12, 0, 0, tzinfo=<UTC>)
-        >>> backed_up_time = datetime.strptime('2009-01-12 00:00', '%Y-%m-%d %H:%M')
-        >>> locale_tz = timezone(TIME_ZONE)
-        >>> set_start_access_time(locale_tz.localize(backed_up_time))
         >>> get_start_access_time()
         datetime.datetime(2009, 1, 12, 0, 0, tzinfo=<UTC>)
     '''
@@ -234,16 +229,9 @@ def set_last_access_time(last_access_time):
     '''
         Set the last_time bitcoind or bitcoin-qt run through Blockchain Backup.
 
-        >>> from pytz import timezone
-        >>> from blockchain_backup.settings import TIME_ZONE
         >>> from blockchain_backup.bitcoin.tests import utils as test_utils
         >>> test_utils.init_database()
         >>> set_last_access_time(datetime(2009, 1, 12, 0, 0, tzinfo=utc))
-        >>> get_last_access_time()
-        datetime.datetime(2009, 1, 12, 0, 0, tzinfo=<UTC>)
-        >>> backed_up_time = datetime.strptime('2009-01-12 00:00', '%Y-%m-%d %H:%M')
-        >>> locale_tz = timezone(TIME_ZONE)
-        >>> set_last_access_time(locale_tz.localize(backed_up_time))
         >>> get_last_access_time()
         datetime.datetime(2009, 1, 12, 0, 0, tzinfo=<UTC>)
     '''
@@ -287,16 +275,9 @@ def set_last_backed_up_time(last_backed_up_time):
     '''
         Set the last_time backed up.
 
-        >>> from pytz import timezone
-        >>> from blockchain_backup.settings import TIME_ZONE
         >>> from blockchain_backup.bitcoin.tests import utils as test_utils
         >>> test_utils.init_database()
         >>> set_last_backed_up_time(datetime(2009, 1, 12, 0, 0, tzinfo=utc))
-        >>> get_last_backed_up_time()
-        datetime.datetime(2009, 1, 12, 0, 0, tzinfo=<UTC>)
-        >>> backed_up_time = datetime.strptime('2009-01-12 00:00', '%Y-%m-%d %H:%M')
-        >>> locale_tz = timezone(TIME_ZONE)
-        >>> set_last_backed_up_time(locale_tz.localize(backed_up_time))
         >>> get_last_backed_up_time()
         datetime.datetime(2009, 1, 12, 0, 0, tzinfo=<UTC>)
     '''
@@ -400,18 +381,18 @@ def get_latest_bcb_version():
         >>> from blockchain_backup.bitcoin.tests import utils as test_utils
         >>> test_utils.init_database()
         >>> latest_bcb_version = get_latest_bcb_version()
-        >>> latest_bcb_version == BLOCKCHAIN_BACKUP_VERSION
+        >>> latest_bcb_version == CURRENT_VERSION
         True
     '''
 
     # use the default if nothing else known
-    latest_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+    latest_bcb_version = CURRENT_VERSION
 
     try:
         state_settings = get_state()
         latest_bcb_version = state_settings.latest_bcb_version
         if latest_bcb_version is None:
-            latest_bcb_version = BLOCKCHAIN_BACKUP_VERSION
+            latest_bcb_version = CURRENT_VERSION
     except: # 'bare except' because it catches more than "except Exception"
         log(format_exc())
 
@@ -432,56 +413,6 @@ def set_latest_bcb_version(latest_bcb_version):
         state_settings = get_state()
         if state_settings.latest_bcb_version != latest_bcb_version:
             state_settings.latest_bcb_version = latest_bcb_version
-            save_state(state_settings)
-    except: # 'bare except' because it catches more than "except Exception"
-        log(format_exc())
-
-def get_latest_core_version():
-    '''
-        Get the lastest bitcoin core version from online.
-
-        >>> from blockchain_backup.bitcoin.tests import utils as test_utils
-        >>> from blockchain_backup.core_version import CORE_VERSION
-        >>> latest_core_version = get_latest_core_version()
-        >>> latest_core_version == CORE_VERSION
-        True
-        >>> test_utils.init_database()
-        >>> latest_core_version = get_latest_core_version()
-        >>> latest_core_version == CORE_VERSION
-        True
-    '''
-    from blockchain_backup.bitcoin.utils import get_bitcoin_version
-
-    # use the default if nothing else known
-    latest_core_version = get_bitcoin_version()
-
-    try:
-        state_settings = get_state()
-        latest_version = state_settings.latest_core_version
-        if latest_version:
-            latest_core_version = latest_version
-    except PermissionError:
-        log('permission error while getting bitcoin version')
-    except: # 'bare except' because it catches more than "except Exception"
-        log(format_exc())
-
-    return latest_core_version
-
-def set_latest_core_version(latest_core_version):
-    '''
-        Set the latest_core_version.
-
-        >>> from blockchain_backup.bitcoin.tests import utils as test_utils
-        >>> test_utils.init_database()
-        >>> set_latest_core_version('0.20.0')
-        >>> get_latest_core_version()
-        '0.20.0'
-    '''
-
-    try:
-        state_settings = get_state()
-        if state_settings.latest_core_version != latest_core_version:
-            state_settings.latest_core_version = latest_core_version
             save_state(state_settings)
     except: # 'bare except' because it catches more than "except Exception"
         log(format_exc())
@@ -635,6 +566,6 @@ def save_state(record):
         try:
             record.save()
         except: # 'bare except' because it catches more than "except Exception"
-            log('tried to save bitcoin.state')
+            log(f'tried to save bitcoin.state to {DATABASE_NAME}')
             log(format_exc())
             raise

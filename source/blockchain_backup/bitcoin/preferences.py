@@ -1,26 +1,26 @@
 '''
     Manage blockchain_backup prefs.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-12-05
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-01-13
 '''
 
 import os
 from shutil import rmtree
 from traceback import format_exc
 
-from django.contrib import messages
 from django.db import transaction
 from django.db.utils import OperationalError
 
 from blockchain_backup.bitcoin import constants
+from blockchain_backup.bitcoin.gen_utils import is_dir_writeable
 from blockchain_backup.bitcoin.models import Preferences
-from blockchain_backup.settings import HOME_DIR
+from blockchain_backup.version import CURRENT_VERSION
 from denova.os.user import getdir, whoami
-from denova.python.log import get_log
+from denova.python.log import Log
 
 
-log = get_log()
+log = Log()
 
 def get_bitcoin_dirs():
     '''
@@ -81,7 +81,6 @@ def data_dir_ok(data_dir=None):
         >>> error_message == 'Unable to create /usr/bin/backups as {}'.format(whoami())
         True
     '''
-
     user = whoami()
     error = None
 
@@ -96,8 +95,6 @@ def data_dir_ok(data_dir=None):
             error = f'Unable to create {data_dir} as {user}'
 
     if os.path.exists(data_dir):
-        from blockchain_backup.bitcoin.utils import is_dir_writeable
-
         ok, error = is_dir_writeable(data_dir)
     else:
         ok = False
@@ -168,19 +165,12 @@ def backup_dir_ok(backup_dir=None):
             dir_preexists = False
             try:
                 os.makedirs(backup_dir)
+                log(f'Created {backup_dir} as {user}')
             except: # 'bare except' because it catches more than "except Exception"
                 error = f'Unable to create {backup_dir} as {user}'
 
         if os.path.exists(backup_dir):
-            try:
-                filename = os.path.join(backup_dir, '.test')
-                with open(filename, "wt") as output_file:
-                    output_file.write('test')
-                os.remove(filename)
-                ok = True
-            except: # 'bare except' because it catches more than "except Exception"
-                ok = False
-                error = f'Unable to write to the backup dir in {backup_dir} as {whoami()}.'
+            ok, error = is_dir_writeable(backup_dir)
         else:
             ok = False
             error = f'Unable to create {backup_dir} as {user}'
@@ -235,22 +225,23 @@ def bin_dir_ok(bin_dir=None):
         >>> bin_dir_ok(bin_dir='/test')
         False
     '''
-    from blockchain_backup.bitcoin import utils as bitcoin_utils
+    # late import to avoid circular imports
+    from blockchain_backup.bitcoin import core_utils
 
     if bin_dir is None:
         bin_dir = get_bin_dir()
 
     if bin_dir is None:
-        bin_dir = bitcoin_utils.get_path_of_core_apps()
+        bin_dir = core_utils.get_path_of_core_apps()
         ok = bin_dir is not None
         if not ok:
             log('required binaries are not in the path')
     else:
         ok = os.path.exists(bin_dir)
         if ok:
-            bitcoind_exists = os.path.exists(os.path.join(bin_dir, bitcoin_utils.bitcoind()))
-            bitcoin_cli_exists = os.path.exists(os.path.join(bin_dir, bitcoin_utils.bitcoin_cli()))
-            bitcoin_qt_exists = os.path.exists(os.path.join(bin_dir, bitcoin_utils.bitcoin_qt()))
+            bitcoind_exists = os.path.exists(os.path.join(bin_dir, core_utils.bitcoind()))
+            bitcoin_cli_exists = os.path.exists(os.path.join(bin_dir, core_utils.bitcoin_cli()))
+            bitcoin_qt_exists = os.path.exists(os.path.join(bin_dir, core_utils.bitcoin_qt()))
 
             ok = bitcoind_exists and bitcoin_cli_exists and bitcoin_qt_exists
             if not ok:
@@ -384,6 +375,6 @@ def save_preferences(record):
         try:
             record.save()
         except: # 'bare except' because it catches more than "except Exception"
-            log('tried to save bitcoin.preferences')
+            log(f'tried to save bitcoin.preferences to {DATABASE_NAME}')
             log(format_exc())
             raise

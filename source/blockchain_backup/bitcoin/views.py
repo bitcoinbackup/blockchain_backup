@@ -1,11 +1,12 @@
 '''
     Bitcoin views
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-11-05
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-01-25
 '''
 
-import json
+from json import dumps as json_dumps
+from json import loads as json2dict
 import os
 from abc import ABCMeta, abstractmethod
 from traceback import format_exc
@@ -13,26 +14,29 @@ from traceback import format_exc
 from django.db.utils import OperationalError
 from django.contrib import messages
 from django.forms import Form
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
-from django.utils.timezone import now
+from django.views import View
 from django.views.generic import TemplateView
 
-from blockchain_backup.bitcoin import constants, preferences, state
+from blockchain_backup.bitcoin import constants, core_utils, gen_utils, preferences, state
+from blockchain_backup.bitcoin.backup_utils import get_next_backup_time, is_backup_running
 from blockchain_backup.bitcoin.forms import PreferencesForm, RestoreForm
-from blockchain_backup.bitcoin import utils as bitcoin_utils
-from blockchain_backup.settings import ALLOWED_HOSTS, DATABASE_PATH
-from blockchain_backup.version import BLOCKCHAIN_BACKUP_VERSION
+from blockchain_backup.settings import ALLOWED_HOSTS
+from blockchain_backup.version import CURRENT_VERSION
 from denova.django_addons.utils import get_remote_ip
 from denova.os.user import getdir, whoami
-from denova.python.log import get_log
+from denova.python.log import Log
+from denova.python.times import now, parse_timestamp
+
 
 
 PREF_URL = 'href="/bitcoin/preferences/"'
 PREF_TITLE = 'title="Click to change your preferences"'
 PREF_CLASS = 'class="btn btn-secondary"'
+PREF_ID = 'id="preferences-id"'
 PREF_ROLE = 'role="button"'
-PREF_BUTTON = f'<a {PREF_CLASS} {PREF_ROLE} {PREF_URL} {PREF_TITLE}>Preferences</a>'
+PREF_BUTTON = f'<a {PREF_CLASS} {PREF_ID} {PREF_ROLE} {PREF_URL} {PREF_TITLE}>Preferences</a>'
 CLICK_PREF_BUTTON = f'Click {PREF_BUTTON} to set it.'
 BAD_BIN_DIR = f"{'The Bitcoin binary directory is not valid.'} {CLICK_PREF_BUTTON}"
 BAD_DATA_DIR = f"{'The Bitcoin data directory is not valid.'} {CLICK_PREF_BUTTON}"
@@ -43,7 +47,7 @@ BACKUPS_ENABLED = 'Backups enabled'
 BACKUPS_DISABLED = 'Blockchain Backup cannot back up until you <a href="/bitcoin/backup/">change the setting</a>.'
 
 # global variables
-log = get_log()
+log = Log()
 
 update_task = None
 backup_task = None
@@ -51,8 +55,6 @@ restore_task = None
 accessing_wallet_task = None
 restore_dir = None
 
-# updates to send to the user
-action_updates = {}
 
 class LocalAccessOnly(TemplateView, metaclass=ABCMeta):
     '''
@@ -92,6 +94,7 @@ class LocalAccessOnly(TemplateView, metaclass=ABCMeta):
 
         return render(request, 'invalid_access.html')
 
+
 class Home(LocalAccessOnly):
     '''
         Show the bitcoin core home page.
@@ -102,9 +105,7 @@ class Home(LocalAccessOnly):
     def get_page(self, request):
         # let's see what we know about the environment
 
-        log('getting home page')
-
-        clear_action_updates()
+        gen_utils.clear_action_updates()
 
         # last block in django database; may be different from last in blockchain
         last_block_updated = state.get_last_block_updated()
@@ -115,8 +116,6 @@ class Home(LocalAccessOnly):
         backup_dir_ok, backup_dir_error = preferences.backup_dir_ok()
         backup_dir = preferences.get_backup_dir()
         last_bcb_version = state.get_latest_bcb_version()
-        current_core_version = bitcoin_utils.get_bitcoin_version()
-        last_core_version = state.get_latest_core_version()
 
         if bcb_run_already:
             data_dir_ok, __ = preferences.data_dir_ok()
@@ -126,7 +125,7 @@ class Home(LocalAccessOnly):
             else:
                 data_dir_ok = False
 
-        bitcoin_utils.check_for_updates()
+        gen_utils.check_for_updates()
 
         params = {
                   'data_dir': data_dir,
@@ -135,15 +134,13 @@ class Home(LocalAccessOnly):
                   'backup_dir_ok': backup_dir_ok,
                   'backup_dir_error': backup_dir_error,
                   'last_bcb_version': last_bcb_version,
-                  'bcb_up_to_date': last_bcb_version >= BLOCKCHAIN_BACKUP_VERSION,
-                  'last_core_version': last_core_version,
-                  'core_up_to_date':  last_core_version >= current_core_version,
-                  'need_backup': bitcoin_utils.get_next_backup_time() < now(),
+                  'bcb_up_to_date': last_bcb_version >= CURRENT_VERSION,
+                  'need_backup': get_next_backup_time() < now(),
                   'last_backed_up_time': state.get_last_backed_up_time(),
                  }
         #log('params: {}'.format(params))
 
-        response = get_home_page_response(request, bcb_run_already, bin_dir_ok, params)
+        response = gen_utils.get_home_page_response(request, bcb_run_already, bin_dir_ok, params)
 
         return response
 
@@ -159,15 +156,18 @@ class AccessWallet(LocalAccessOnly):
 
         log('accessing bitcoin interactively')
 
-        clear_action_updates()
+        gen_utils.clear_action_updates()
+
+        core_running = (core_utils.is_bitcoind_running() or
+                        core_utils.is_bitcoin_tx_running() or
+                        (core_utils.is_bitcoin_qt_running() and not accessing_wallet()))
 
         # it's ok if bitcoin-qt is running in our task
-        if (bitcoin_utils.is_bitcoind_running() or bitcoin_utils.is_bitcoin_tx_running() or
-           (bitcoin_utils.is_bitcoin_qt_running() and not accessing_wallet())):
+        if core_running:
             response = warn_core_running(request)
 
         # tell user if another app is running
-        elif bitcoin_utils.is_backup_running() or bitcoin_utils.is_restore_running():
+        elif is_backup_running() or gen_utils.is_restore_running():
             response = warn_bcb_app_running(request)
 
         # tell user if another task is running
@@ -181,7 +181,7 @@ class AccessWallet(LocalAccessOnly):
             SUBNOTICE4 = "Don't forget to back up your wallet routinely."
             SUBNOTICE = f'{SUBNOTICE1} {SUBNOTICE2} {SUBNOTICE3} {SUBNOTICE4}'
 
-            context = bitcoin_utils.get_blockchain_context()
+            context = gen_utils.get_blockchain_context()
 
             data_dir_ok, error = preferences.data_dir_ok()
             if not preferences.bin_dir_ok():
@@ -190,26 +190,28 @@ class AccessWallet(LocalAccessOnly):
                 context['notice'] = BAD_DATA_DIR
                 context['subnotice'] = error
             else:
-                context['header'] = "Accessing Bitcoin Core Wallet Interactively"
-                context['notice'] = 'WARNING: Do not shut down your computer until Bitcoin-QT stops completely.'
+                HEADER = 'Accessing Bitcoin Core Wallet Interactively'
+                NOTICE = 'WARNING: Do not shut down your computer until Bitcoin-QT stops completely.'
+
+                context['header'] = HEADER
+                context['notice'] = NOTICE
                 context['subnotice'] = SUBNOTICE
 
                 if accessing_wallet():
                     log('already accessing wallet')
 
                 else:
+                    # late import to limit the code that is loaded on start up
                     from blockchain_backup.bitcoin.access_wallet import AccessWalletTask
 
                     accessing_wallet_task = AccessWalletTask()
                     accessing_wallet_task.start()
                     log('access wallet started')
 
-                # make sure the button doesn't appear any more
-                bitcoin_utils.send_socketio_message('button', ' ')
-
             response = render(request, 'bitcoin/access_wallet.html', context=context)
 
         return response
+
 
 class Update(LocalAccessOnly):
     '''
@@ -221,15 +223,15 @@ class Update(LocalAccessOnly):
 
         log('trying to update blockchain')
 
-        clear_action_updates()
+        gen_utils.clear_action_updates()
 
         # check that no other bitcoin-core app is running
-        if (bitcoin_utils.is_bitcoin_qt_running() or bitcoin_utils.is_bitcoin_tx_running() or
-           (bitcoin_utils.is_bitcoind_running() and not updating())):
+        if (core_utils.is_bitcoin_qt_running() or core_utils.is_bitcoin_tx_running() or
+           (core_utils.is_bitcoind_running() and not updating())):
             response = warn_core_running(request)
 
         # tell user if another blockchain_backup app is running
-        elif bitcoin_utils.is_backup_running() or bitcoin_utils.is_restore_running():
+        elif is_backup_running() or gen_utils.is_restore_running():
             response = warn_bcb_app_running(request)
 
         # tell user if another task is running
@@ -241,7 +243,7 @@ class Update(LocalAccessOnly):
             NOTICE2 = 'id="stop_button" href="/bitcoin/interrupt_update/" title="Click to stop updating the blockchain">Stop update</a>'
             NOTICE = f'{NOTICE1} {NOTICE2}'
 
-            context = bitcoin_utils.get_blockchain_context()
+            context = gen_utils.get_blockchain_context()
 
             data_dir_ok, error = preferences.data_dir_ok()
             if not preferences.bin_dir_ok():
@@ -251,29 +253,31 @@ class Update(LocalAccessOnly):
                 context['notice'] = BAD_DATA_DIR
                 log(error)
             else:
-                context['header'] = "Updating Bitcoin's blockchain"
-                context['notice'] = 'WARNING: Don\'t shut down your computer before you <a class="btn btn-secondary " role="button" id="stop_button" href="/bitcoin/interrupt_update/" title="Click to stop updating the blockchain">Stop update</a>'
-                context['subnotice'] = 'Shutting down before this window says it is safe <em>could damage the blockchain</em>.'
-                context['progress'] = 'Starting to update the blockchain'
-                context['update_interval'] = '5000'
+                HEADER = "Updating Bitcoin's blockchain"
+                SUBNOTICE = 'Shutting down before this window says it is safe <em>could damage the blockchain</em>.'
+                PROGRESS = 'Starting to update the blockchain'
+
+                context['header'] = HEADER
+                context['notice'] = NOTICE
+                context['subnotice'] = SUBNOTICE
+                context['progress'] = PROGRESS
 
                 if updating():
                     log('already updating blockchain')
 
                 else:
+                    # late import to limit the code that is loaded on start up
                     from blockchain_backup.bitcoin.update import UpdateTask
 
                     update_task = UpdateTask()
                     update_task.start()
                     log('UpdateTask started')
 
-            # make sure the button doesn't appear any more
-            bitcoin_utils.send_socketio_message('button', ' ')
-
             log(f'context: {context}')
             response = render(request, 'bitcoin/update.html', context=context)
 
         return response
+
 
 class InterruptUpdate(LocalAccessOnly):
     '''
@@ -292,8 +296,7 @@ class InterruptUpdate(LocalAccessOnly):
             update_task.interrupt()
             log('interrupted UpdateTask')
 
-        context = bitcoin_utils.get_blockchain_context()
-        context['update_interval'] = '1000'
+        context = gen_utils.get_blockchain_context()
 
         return render(request, 'bitcoin/interrupt_update.html', context=context)
 
@@ -308,15 +311,15 @@ class Backup(LocalAccessOnly):
 
         log('backing up blockchain')
 
-        clear_action_updates()
+        gen_utils.clear_action_updates()
 
         # check that no other bitcoin-core app is running
-        if bitcoin_utils.is_bitcoin_core_running():
+        if core_utils.is_bitcoin_core_running():
             message = NO_BACKUP_IF_CORE_RUNNING
             response = warn_core_running(request, message=message)
 
         # tell user if another app is running
-        elif bitcoin_utils.is_restore_running():
+        elif gen_utils.is_restore_running():
             response = warn_bcb_app_running(request, app=constants.RESTORE_PROGRAM)
 
         # tell user if another task is running
@@ -331,10 +334,10 @@ class Backup(LocalAccessOnly):
 
         else:
             SUBNOTICE1 = 'If you need to stop the backup, then <a class="btn btn-secondary " href="/bitcoin/interrupt_backup/"'
-            SUBNOTICE2 = 'role="button" id="stop-button" title="Click to stop backing up the blockchain">click here</a>.'
+            SUBNOTICE2 = 'role="button" id="stop-button" title="Click to stop backing up the blockchain">click here</a>'
             SUBNOTICE = f'{SUBNOTICE1} {SUBNOTICE2}'
 
-            context = bitcoin_utils.get_blockchain_context()
+            context = gen_utils.get_blockchain_context()
 
             data_dir_ok, error = preferences.data_dir_ok()
             if not preferences.bin_dir_ok():
@@ -348,20 +351,17 @@ class Backup(LocalAccessOnly):
                 context['notice'] = 'WARNING: Stopping the backup could damage the ability to restore the blockchain.'
                 context['subnotice'] = SUBNOTICE
                 context['progress'] = 'Starting to back up the blockchain'
-                context['update_interval'] = '1000'
 
                 if backing_up():
                     log('already backing_up blockchain')
 
                 else:
+                    # late import to limit the code that is loaded on start up
                     from blockchain_backup.bitcoin.backup import BackupTask
 
                     backup_task = BackupTask()
                     backup_task.start()
                     log('backup started')
-
-            # make sure the button doesn't appear any more
-            bitcoin_utils.send_socketio_message('button', ' ')
 
             response = render(request, 'bitcoin/backup.html', context=context)
 
@@ -382,8 +382,7 @@ class InterruptBackup(LocalAccessOnly):
             backup_task.interrupt()
         log('interrupted backup')
 
-        context = bitcoin_utils.get_blockchain_context()
-        context['update_interval'] = '1000'
+        context = gen_utils.get_blockchain_context()
 
         return render(request, 'bitcoin/interrupt_backup.html', context=context)
 
@@ -397,7 +396,7 @@ class ChangeBackupStatus(LocalAccessOnly):
 
         log('change whether backups enabled or not')
 
-        clear_action_updates()
+        gen_utils.clear_action_updates()
         form = Form()
         context = {}
         backups_enabled = state.get_backups_enabled()
@@ -416,10 +415,8 @@ class ChangeBackupStatus(LocalAccessOnly):
 
     def post_page(self, request):
 
-        if 'enable-backups-button' in request.POST or 'leave-backups-enabled-button' in request.POST:
-            backups_enabled = True
-        else:
-            backups_enabled = False
+        backups_enabled = ('enable-backups-button' in request.POST or
+                           'leave-backups-enabled-button' in request.POST)
 
         if state.get_backups_enabled() != backups_enabled:
             state.set_backups_enabled(backups_enabled)
@@ -448,14 +445,14 @@ class Restore(LocalAccessOnly):
 
         log('getting restore page')
 
-        clear_action_updates()
+        gen_utils.clear_action_updates()
 
         response = self.check_for_conflicts(request)
 
         if response is None:
             log('nothing conflicting with restore')
             error_message = more_error_msg = None
-            context = bitcoin_utils.get_blockchain_context()
+            context = gen_utils.get_blockchain_context()
 
             backup_dates, preselected_date = state.get_backup_dates_and_dirs()
             error_message, more_error_msg = self.check_dirs_ok(backup_dates)
@@ -475,7 +472,6 @@ class Restore(LocalAccessOnly):
                     context['subnotice'] = ''
                 else:
                     context['subnotice'] = more_error_msg
-                context['update_interval'] = '1000'
 
                 response = render(request, 'bitcoin/restore_not_ready.html', context=context)
 
@@ -510,7 +506,7 @@ class Restore(LocalAccessOnly):
                 response = self.restore()
             else:
                 log('form is not valid')
-                log_bad_fields(form)
+                gen_utils.log_bad_fields(form)
                 messages.error(request, INVALID_FIELDS)
                 response = render(request, 'bitcoin/ready_to_restore.html', {'form': form, })
 
@@ -520,25 +516,22 @@ class Restore(LocalAccessOnly):
 
         global restore_task, restore_dir
 
-        clear_action_updates()
+        gen_utils.clear_action_updates()
 
         if restoring():
             log('already restoring blockchain')
         else:
+            # late import to limit the code that is loaded on start up
             from blockchain_backup.bitcoin.restore import RestoreTask
 
             restore_task = RestoreTask(restore_dir)
             restore_task.start()
             log('restore blockchain started')
 
-        # make sure the button doesn't appear any more
-        bitcoin_utils.send_socketio_message('button', ' ')
-
-        context = bitcoin_utils.get_blockchain_context()
+        context = gen_utils.get_blockchain_context()
         context['header'] = 'Restoring Bitcoin Blockchain'
         context['notice'] = 'WARNING: Do not shut down your computer until the restore finishes.'
         context['progress'] = 'Starting to restore the blockchain'
-        context['update_interval'] = '1000'
 
         response = render(self.request, 'bitcoin/restore.html', context=context)
 
@@ -549,7 +542,7 @@ class Restore(LocalAccessOnly):
 
         log('ask user to confirm they want to restore the blockchain')
 
-        clear_action_updates()
+        gen_utils.clear_action_updates()
 
         form = RestoreForm()
         show_backup_dates = len(backup_dates) > 1
@@ -561,12 +554,10 @@ class Restore(LocalAccessOnly):
         context['header'] = '<h4>Are you sure you want to restore the Bitcoin blockchain?</h4>'
         context['notice'] = warning
         context['subnotice'] = ''
-        context['backup_dates_with_dirs'], __ = state.get_backup_dates_and_dirs()
-        context['form'] = form
+        context['backup_dates_with_dirs'] = backup_dates
+        context['backup_dates_with_dirs'] = backup_dates
         context['update_interval'] = '1000'
-
-        # make sure we replace any notice about an error with the warning
-        bitcoin_utils.send_socketio_message('notice', warning.replace('\n', '<br/>'))
+        context['form'] = form
 
         response = render(request, 'bitcoin/ready_to_restore.html', context=context)
 
@@ -578,20 +569,20 @@ class Restore(LocalAccessOnly):
         response = None
 
         # check that no other bitcoin-core app is running
-        if bitcoin_utils.is_bitcoin_core_running():
-            log(f'bitcoind running: {bitcoin_utils.is_bitcoind_running()}')
-            log(f'bitcoin_qt running: {bitcoin_utils.is_bitcoin_qt_running()}')
-            log(f'bitcoin_tx running: {bitcoin_utils.is_bitcoin_tx_running()}')
+        if core_utils.is_bitcoin_core_running():
+            log(f'bitcoind running: {core_utils.is_bitcoind_running()}')
+            log(f'bitcoin_qt running: {core_utils.is_bitcoin_qt_running()}')
+            log(f'bitcoin_tx running: {core_utils.is_bitcoin_tx_running()}')
 
             response = warn_core_running(request)
 
         # tell user if backup is running
-        elif bitcoin_utils.is_backup_running():
+        elif is_backup_running():
             log('backup running')
             response = warn_bcb_app_running(request, app=constants.BACKUP_PROGRAM)
 
         # tell user if restore is already running
-        elif bitcoin_utils.is_restore_running():
+        elif gen_utils.is_restore_running():
             log('restore running')
             response = self.restore()
 
@@ -610,6 +601,7 @@ class Restore(LocalAccessOnly):
         backup_dir_ok, backup_error = preferences.backup_dir_ok()
         if backup_dir_ok:
             good_backup = backup_dates
+            log(f'backup_dates {backup_dates}')
         else:
             log(backup_error)
 
@@ -625,6 +617,9 @@ class Restore(LocalAccessOnly):
             error_message = self.NO_GOOD_BACKUP
             more_error_msg = self.REMINDER
 
+        log(f'error_message {error_message}')
+        log(f'more_error_msg {more_error_msg}')
+
         return error_message, more_error_msg
 
 class InterruptRestore(LocalAccessOnly):
@@ -636,7 +631,7 @@ class InterruptRestore(LocalAccessOnly):
 
         global restore_task
 
-        clear_action_updates()
+        gen_utils.clear_action_updates()
 
         # don't check if we are restoring() to avoid race
         # it should be ok to call interrupt() multiple times
@@ -644,10 +639,10 @@ class InterruptRestore(LocalAccessOnly):
             restore_task.interrupt()
         log('interrupted restore')
 
-        context = bitcoin_utils.get_blockchain_context()
-        context['update_interval'] = '1000'
+        context = gen_utils.get_blockchain_context()
 
         return render(request, 'bitcoin/interrupt_restore.html', context=context)
+
 
 class ChangePreferences(LocalAccessOnly):
     '''
@@ -660,7 +655,7 @@ class ChangePreferences(LocalAccessOnly):
         try:
             prefs = preferences.get_preferences()
         except OperationalError as oe:
-            report_operational_error(oe)
+            gen_utils.report_operational_error(oe)
 
         try:
             if prefs.data_dir is None:
@@ -671,7 +666,7 @@ class ChangePreferences(LocalAccessOnly):
                                                 constants.DEFAULT_BACKUPS_DIR)
 
             if prefs.bin_dir is None:
-                prefs.bin_dir = bitcoin_utils.get_path_of_core_apps()
+                prefs.bin_dir = core_utils.get_path_of_core_apps()
 
             form = PreferencesForm(instance=prefs)
         except: # 'bare except' because it catches more than "except Exception"
@@ -679,7 +674,7 @@ class ChangePreferences(LocalAccessOnly):
             form = PreferencesForm()
 
         return render(request, self.form_url,
-                 {'form': form, 'context': bitcoin_utils.get_blockchain_context()})
+                 {'form': form, 'context': gen_utils.get_blockchain_context()})
 
     def post_page(self, request):
 
@@ -709,7 +704,7 @@ class ChangePreferences(LocalAccessOnly):
 
         else:
             log('form is not valid')
-            log_bad_fields(form)
+            gen_utils.log_bad_fields(form)
             messages.error(request, 'Invalid preferences -- details about the errors appear below the fields.')
             response = render(request, self.form_url, {'form': form, })
 
@@ -731,7 +726,7 @@ class InitDataDir(LocalAccessOnly):
                 error = f'Unable to create {data_dir} as {whoami()}'
 
         if os.path.exists(data_dir):
-            __, error = bitcoin_utils.is_dir_writeable(data_dir)
+            __, error = gen_utils.is_dir_writeable(data_dir)
 
         if error is not None:
             log(error)
@@ -742,6 +737,38 @@ class InitDataDir(LocalAccessOnly):
         return response
 
 
+class UpdatePage(View):
+    ''' Return latest updates for a page. '''
+
+    def post(self, request, *args, **kwargs):
+
+        try:
+            data = json2dict(request.body)
+        except:
+            data = None
+            log(format_exc())
+
+        try:
+            if 'timestamp' in data:
+                try:
+                    prev_timestamp = parse_timestamp(data['timestamp'])
+                except ValueError:
+                    prev_timestamp = None
+                except:
+                    log(format_exc())
+                    prev_timestamp = None
+            else:
+                prev_timestamp = None
+
+            json_message = gen_utils.get_newest_actions(prev_timestamp=prev_timestamp)
+            # log(f'sending updated details to {get_remote_ip(request)}')
+        except:
+            json_message = None
+            log(format_exc())
+
+        return JsonResponse(json_message, safe=False)
+
+
 class Ajax(LocalAccessOnly):
     '''
         Update html in background using ajax.
@@ -749,239 +776,18 @@ class Ajax(LocalAccessOnly):
 
     def get_page(self, request):
 
-        global action_updates
-
         message = {}
+        action_updates = gen_utils.get_action_updates()
         for action_update in action_updates:
             key = action_update
             value = action_updates[key]
             if value:
                 message[key] = value
 
-        json_message = json.dumps(message)
-        log(f'ajax json response: {json_message}')
+        json_message = json_dumps(message)
 
         return HttpResponse(json_message)
 
-def get_home_page_response(request,
-                           bcb_run_already,
-                           bin_dir_ok,
-                           params):
-    '''
-        Get the home page depending on the known environment.
-
-        >>> from django.test import RequestFactory
-        >>> factory = RequestFactory()
-        >>> request = factory.get('/')
-        >>> bin_dir_ok = True
-        >>> data_dir = '/tmp/bitcoin/data/'
-        >>> data_dir_ok = True
-        >>> backup_dir = '/tmp/bitcoin/data/backups/'
-        >>> backup_dir_ok = True
-        >>> need_backup = True
-        >>> last_bcb_version = BLOCKCHAIN_BACKUP_VERSION
-        >>> bcb_up_to_date = True
-        >>> last_core_version = bitcoin_utils.get_bitcoin_version()
-        >>> core_up_to_date = True
-        >>> need_backup = False
-        >>> last_backed_up_time = None
-        >>> params = {
-        ...           'data_dir': data_dir,
-        ...           'data_dir_ok': data_dir_ok,
-        ...           'backup_dir': backup_dir,
-        ...           'backup_dir_ok': backup_dir_ok,
-        ...           'last_bcb_version': last_bcb_version,
-        ...           'bcb_up_to_date': bcb_up_to_date,
-        ...           'last_core_version': last_core_version,
-        ...           'core_up_to_date': core_up_to_date,
-        ...           'need_backup': need_backup,
-        ...           'last_backed_up_time': last_backed_up_time,
-        ...          }
-        >>> bcb_run_already = True
-        >>> response = get_home_page_response(request, bcb_run_already, bin_dir_ok, params)
-        >>> response.status_code == 200
-        True
-        >>> b'href="/bitcoin/access_wallet/' in response.content
-        True
-        >>> b'href="/bitcoin/update/' in response.content
-        True
-        >>> b'href="/bitcoin/backup/' in response.content
-        True
-        >>> b'href="/bitcoin/restore/' in response.content
-        True
-        '''
-
-    data_dir_ok = params['data_dir_ok']
-    backup_dir_ok = params['backup_dir_ok']
-    all_dirs_available = bin_dir_ok and data_dir_ok and backup_dir_ok
-
-    if bcb_run_already:
-        if all_dirs_available:
-            response = render(request, 'bitcoin/home.html', context=params)
-        elif not backup_dir_ok:
-            response = render(request, 'bitcoin/bad_backup_dir.html', context=params)
-        else:
-            response = render(request, 'bitcoin/missing_info.html', context=params)
-
-    else:
-        if all_dirs_available:
-
-            blockchain_has_data = False
-            if data_dir_ok:
-                data_dir = params['data_dir']
-                blocks_dir = os.path.join(data_dir, 'blocks')
-                chainstate_dir = os.path.join(data_dir, 'chainstate')
-                if os.path.exists(blocks_dir) and os.path.exists(chainstate_dir):
-                    blocks_items = os.listdir(blocks_dir)
-                    chainstate_items = os.listdir(chainstate_dir)
-                    blockchain_has_data = blocks_items and chainstate_items
-
-            if blockchain_has_data:
-                if state.get_all_backup_dates_and_dirs():
-                    response = render(request, 'bitcoin/home.html', context=params)
-                else:
-                    response = render(request, 'bitcoin/need_first_backup.html', context=params)
-            else:
-                response = render(request, 'bitcoin/need_update.html', context=params)
-
-        # Bitcoin Core is installed, but not all vital dirs are ok
-        elif bin_dir_ok:
-            if not data_dir_ok and not backup_dir_ok:
-                response = render(request, 'bitcoin/core_found_no_data_no_backup.html', context=params)
-            elif not data_dir_ok:
-                response = render(request, 'bitcoin/core_found_no_data.html', context=params)
-            else:
-                response = render(request, 'bitcoin/core_found_no_backup.html', context=params)
-
-        else:
-            response = render(request, 'bitcoin/get_started.html', context=params)
-
-    return response
-
-def warn_bcb_app_running(request, app=None):
-    '''
-        Warn that a denova app is running.
-
-        >>> from django.test import RequestFactory
-        >>> no_backup_message = bytearray(
-        ...   NO_BACKUP_IF_CORE_RUNNING, encoding='utf-8')
-        >>> factory = RequestFactory()
-        >>> request = factory.get('/bitcoin/preferences/')
-        >>> response = warn_bcb_app_running(request)
-        >>> response.status_code == 200
-        True
-        >>> b'Update' in response.content
-        True
-    '''
-
-    if app is None:
-        if bitcoin_utils.is_backup_running():
-            app = constants.BACKUP_PROGRAM
-        else:
-            app = constants.RESTORE_PROGRAM
-
-    return render(request, 'bitcoin/blockchain_backup_app_running.html', {'app': app})
-
-def warn_core_running(request, message=None):
-    '''
-        Warn that one of the bitcoin
-        core programs is running.
-
-        >>> from django.test import RequestFactory
-        >>> no_backup_message = bytearray(NO_BACKUP_IF_CORE_RUNNING, encoding='utf-8')
-        >>> factory = RequestFactory()
-        >>> request = factory.get('/bitcoin/preferences/')
-        >>> response = warn_core_running(request)
-        >>> response.status_code == 200
-        True
-        >>> b'BitcoinD' in response.content
-        True
-        >>> no_backup_message in response.content
-        False
-        >>> request = factory.get('/bitcoin/preferences/')
-        >>> response = warn_core_running(request, message=NO_BACKUP_IF_CORE_RUNNING)
-        >>> response.status_code == 200
-        True
-        >>> b'BitcoinD' in response.content
-        True
-        >>> no_backup_message in response.content
-        True
-    '''
-
-    if bitcoin_utils.is_bitcoin_qt_running():
-        app = 'Bitcoin-QT'
-    elif bitcoin_utils.is_bitcoin_tx_running():
-        app = 'Bitcoin-TX'
-    else:
-        app = 'BitcoinD'
-
-    if message is None:
-        params = {'app': app}
-    else:
-        params = {'app': app, 'more': message}
-
-    return render(request, 'bitcoin/core_running.html', params)
-
-def warn_bcb_task_running(request):
-    '''
-        Warn that another resuce task is running.
-
-        >>> from django.test import RequestFactory
-        >>> no_backup_message = bytearray(
-        ...   NO_BACKUP_IF_CORE_RUNNING, encoding='utf-8')
-        >>> factory = RequestFactory()
-        >>> request = factory.get('/bitcoin/preferences/')
-        >>> response = warn_bcb_task_running(request)
-        >>> response.status_code == 200
-        True
-        >>> b'Update' in response.content
-        True
-        >>> no_backup_message in response.content
-        False
-    '''
-
-    if accessing_wallet():
-        app = 'access wallet'
-    elif updating():
-        app = 'update'
-    elif backing_up():
-        app = 'backup'
-    elif restoring():
-        app = 'restore'
-    else:
-        app = 'update'
-
-    params = {'app': app}
-
-    return render(request, 'bitcoin/task_running.html', params)
-
-def log_bad_fields(form):
-    '''
-        Track the bad fields entered.
-
-        >>> form = RestoreForm()
-        >>> log_bad_fields(form)
-    '''
-
-    # get details of invalid prefeences
-    details = {}
-    # see django.contrib.formtools.utils.security_hash()
-    # for example of form traversal
-    for field in form:
-        if hasattr(form, 'cleaned_data') and field.name in form.cleaned_data:
-            name = field.name
-        else:
-            # mark invalid data
-            name = '__invalid__' + field.name
-        details[name] = field.data
-    log(f'{details}')
-    try:
-        if form.name.errors:
-            log('  ' + form.name.errors)
-        if form.email.errors:
-            log('  ' + form.email.errors)
-    except: # 'bare except' because it catches more than "except Exception"
-        pass
 
 def updating():
     '''
@@ -1031,44 +837,99 @@ def accessing_wallet():
 
     return accessing_wallet_task is not None and accessing_wallet_task.is_alive()
 
-def set_action_update(key, value):
+def warn_bcb_app_running(request, app=None):
     '''
-        Set an update for Blockchain Backup's actions.
+        Warn that a denova app is running.
 
-        >>> set_action_update('header', 'Test')
-        'Test'
-    '''
-    global action_updates
-
-    action_updates[key] = value
-
-    return action_updates[key]
-
-def clear_action_updates():
-    '''
-        Clear all action_updates.
-
-        >>> clear_action_updates()
-        >>> action_updates
-        {}
-    '''
-    global action_updates
-
-    log('cleared action_updates')
-    action_updates.clear()
-
-def report_operational_error(oe):
-    '''
-        Report operational error.
-
-        # oe should be an OperationalError, but we just
-        # use the string format so we'll simplify the test
-        >>> oe = 'Unable to write to database'
-        >>> report_operational_error(oe)
-        <HttpResponse status_code=200, "text/html; charset=utf-8">
+        >>> from django.test import RequestFactory
+        >>> no_backup_message = bytearray(
+        ...   NO_BACKUP_IF_CORE_RUNNING, encoding='utf-8')
+        >>> factory = RequestFactory()
+        >>> request = factory.get('/bitcoin/preferences/')
+        >>> response = warn_bcb_app_running(request)
+        >>> response.status_code == 200
+        True
+        >>> b'Update' in response.content
+        True
     '''
 
-    error_message = str(oe).capitalize()
-    log(f'{error_message}. Database in {DATABASE_PATH}')
+    if app is None:
+        if is_backup_running():
+            app = constants.BACKUP_PROGRAM
+        else:
+            app = constants.RESTORE_PROGRAM
 
-    return HttpResponse(f'{error_message}.<br/>Database in {DATABASE_PATH}')
+    return render(request, 'bitcoin/blockchain_backup_app_running.html', {'app': app})
+
+def warn_core_running(request, message=None):
+    '''
+        Warn that one of the bitcoin
+        core programs is running.
+
+        >>> from django.test import RequestFactory
+        >>> no_backup_message = bytearray(NO_BACKUP_IF_CORE_RUNNING, encoding='utf-8')
+        >>> factory = RequestFactory()
+        >>> request = factory.get('/bitcoin/preferences/')
+        >>> response = warn_core_running(request)
+        >>> response.status_code == 200
+        True
+        >>> b'BitcoinD' in response.content
+        True
+        >>> no_backup_message in response.content
+        False
+        >>> request = factory.get('/bitcoin/preferences/')
+        >>> response = warn_core_running(request, message=NO_BACKUP_IF_CORE_RUNNING)
+        >>> response.status_code == 200
+        True
+        >>> b'BitcoinD' in response.content
+        True
+        >>> no_backup_message in response.content
+        True
+    '''
+
+    if core_utils.is_bitcoin_qt_running():
+        app = 'Bitcoin-QT'
+    elif core_utils.is_bitcoin_tx_running():
+        app = 'Bitcoin-TX'
+    else:
+        app = 'BitcoinD'
+
+    if message is None:
+        params = {'app': app}
+    else:
+        params = {'app': app, 'more': message}
+
+    return render(request, 'bitcoin/core_running.html', params)
+
+def warn_bcb_task_running(request):
+    '''
+        Warn that another resuce task is running.
+
+        >>> from django.test import RequestFactory
+        >>> no_backup_message = bytearray(
+        ...   NO_BACKUP_IF_CORE_RUNNING, encoding='utf-8')
+        >>> factory = RequestFactory()
+        >>> request = factory.get('/bitcoin/preferences/')
+        >>> response = warn_bcb_task_running(request)
+        >>> response.status_code == 200
+        True
+        >>> b'Update' in response.content
+        True
+        >>> no_backup_message in response.content
+        False
+    '''
+
+    if accessing_wallet():
+        app = 'access wallet'
+    elif updating():
+        app = 'update'
+    elif backing_up():
+        app = 'backup'
+    elif restoring():
+        app = 'restore'
+    else:
+        app = 'update'
+
+    params = {'app': app}
+
+    return render(request, 'bitcoin/task_running.html', params)

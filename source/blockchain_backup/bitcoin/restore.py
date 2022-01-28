@@ -1,13 +1,12 @@
 '''
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-11-05
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-07-16
 '''
 
 import json
 import os
 from shutil import rmtree
 from subprocess import CalledProcessError, Popen, PIPE
-from tempfile import gettempdir
 from threading import Thread
 from time import sleep
 from traceback import format_exc
@@ -15,13 +14,13 @@ from traceback import format_exc
 from django.utils.timezone import now
 
 from blockchain_backup.bitcoin import constants, state
-from blockchain_backup.bitcoin import utils as bitcoin_utils
+from blockchain_backup.bitcoin.backup_utils import get_backup_subdir, get_excluded_files
+from blockchain_backup.bitcoin.gen_utils import check_for_updates, is_restore_running
 from blockchain_backup.bitcoin.manager import BitcoinManager
-from blockchain_backup.bitcoin.state import set_last_backed_up_time
 from denova.os import command
 from denova.os.process import get_pid
 from denova.os.user import whoami
-from denova.python.log import get_log, get_log_path, BASE_LOG_DIR
+from denova.python.log import Log, get_log_path, BASE_LOG_DIR
 from denova.python.ve import virtualenv_dir
 
 
@@ -34,6 +33,7 @@ class RestoreTask(Thread):
           Error loading block database. / Do you want to rebuild the block database now?
     '''
 
+    RESTORE_STARTED = 'Checking files to restore. This may take a while.'
     RESTORE_DONE = 'Restore done'
     RESTORE_FINISHED = '<br/>&nbsp;Finished restore. You are ready to continue using Bitcoin Core.'
     STOPPED_RESTORE = 'Restore stopped on your request'
@@ -71,7 +71,7 @@ class RestoreTask(Thread):
 
         self._interrupted = False
 
-        self.log = get_log()
+        self.log = Log()
         self.log_name = os.path.basename(get_log_path())
 
         self.manager = None
@@ -182,8 +182,9 @@ class RestoreTask(Thread):
         self.log(f'starting restoration from {self.restore_dir}')
 
         self.manager.update_menu(constants.DISABLE_ITEM)
+        self.manager.update_progress(self.RESTORE_STARTED)
 
-        bitcoin_utils.check_for_updates(force=True, reason='restore')
+        check_for_updates(force=True, reason='restore')
 
         ok = self.restore_files_and_dirs()
 
@@ -201,7 +202,7 @@ class RestoreTask(Thread):
             if ok:
                 # we don't want to warn that a backup is needed
                 # just after we restore from a backup
-                set_last_backed_up_time(now())
+                state.set_last_backed_up_time(now())
             else:
                 self.remove_last_updated_file()
 
@@ -249,7 +250,7 @@ class RestoreTask(Thread):
 
         ok = True
         try:
-            if bitcoin_utils.is_restore_running():
+            if is_restore_running():
                 restore_pid = get_pid(constants.RESTORE_PROGRAM)
                 restore_process = None
                 self.log('{} is already running using pid: {}'.format(
@@ -295,7 +296,7 @@ class RestoreTask(Thread):
         bin_dir = os.path.join(virtualenv_dir(), 'bin')
         args.append(os.path.join(bin_dir, constants.RESTORE_PROGRAM))
         args.append('--exclude')
-        args.append(bitcoin_utils.get_excluded_files())
+        args.append(get_excluded_files())
         args.append('--verbose')
         args.append('--quick')
         args.append(f'{self.restore_dir}/*')
@@ -322,10 +323,17 @@ class RestoreTask(Thread):
             >>> test_utils.stop_restore()
         '''
         def show_line(line):
-            if line is not None and line.startswith('Copying:'):
-                index = line.rfind(os.sep)
-                if index > 0:
-                    line = f'<strong>Copying: </strong>{line[index + 1:]}'
+            if line is not None and line.startswith('Copying '):
+                end_index = line.find(' to ')
+                if end_index > 0:
+                    line = line[:end_index].strip()
+                    if line.startswith('Copying metadata '):
+                        filename = line[len('Copying metadata '):]
+                        title = 'Copying metadata'
+                    else:
+                        filename = line[len('Copying '):]
+                        title = 'Copying'
+                    line = f'<strong>{title}</strong> {filename}'
                 self.manager.update_progress(line)
 
         self.log('starting to wait for restore')
@@ -334,13 +342,13 @@ class RestoreTask(Thread):
             log_path = os.path.join(BASE_LOG_DIR, whoami(), 'bcb-restore.log')
 
             # wait until the log appears
-            while bitcoin_utils.is_restore_running() and not self.is_interrupted():
+            while is_restore_running() and not self.is_interrupted():
 
                 if not os.path.exists(log_path):
                     sleep(1)
 
             # then display the restore details
-            while bitcoin_utils.is_restore_running() and not self.is_interrupted():
+            while is_restore_running() and not self.is_interrupted():
 
                 with open(log_path, 'rt') as restore_log:
                     show_line(restore_log.readline())
@@ -370,11 +378,11 @@ class RestoreTask(Thread):
         '''
         try:
             if restore_process is None:
-                if bitcoin_utils.is_restore_running():
+                if is_restore_running():
                     bin_dir = os.path.join(virtualenv_dir(), 'bin')
                     args = [os.path.join(bin_dir, 'killmatch'),
                             '"{} --exclude {}"'.format(
-                             constants.RESTORE_PROGRAM, bitcoin_utils.get_excluded_files())]
+                             constants.RESTORE_PROGRAM, get_excluded_files())]
                     result = command.run(*args).stdout
                     self.log(f'killing restore result: {result}')
 
@@ -411,8 +419,8 @@ class RestoreTask(Thread):
             True
         '''
 
-        BACKUP_SUBDIR = bitcoin_utils.get_backup_subdir()
-        EXCLUDED_FILES = bitcoin_utils.get_excluded_files()
+        BACKUP_SUBDIR = get_backup_subdir()
+        EXCLUDED_FILES = get_excluded_files()
 
         ok = True
 
@@ -601,16 +609,16 @@ class RestoreTask(Thread):
             self.log(f'args: {args}')
 
             attempts = 0
-            while bitcoin_utils.is_restore_running() and attempts < 5:
+            while is_restore_running() and attempts < 5:
                 command.run(*args)
-                if bitcoin_utils.is_restore_running():
+                if is_restore_running():
                     sleep(3)
                     attempts += 1
         except CalledProcessError as cpe:
             self.log(cpe)
             self.log(format_exc())
 
-        # a new page was displayed so give socketio time to connect
+        # a new page was displayed so give long polling time to connect
         while seconds < max_secs:
             self.manager.update_header(self.STOPPED_RESTORE)
             self.manager.update_subnotice(self.STOP_RESTORE_NOT_COMPLETE)
@@ -620,7 +628,7 @@ class RestoreTask(Thread):
             seconds += 1
 
         # return value is for testing purposes only
-        return not bitcoin_utils.is_restore_running()
+        return not is_restore_running()
 
     def remove_last_updated_file(self):
         '''

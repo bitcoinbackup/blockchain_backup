@@ -1,21 +1,21 @@
 '''
     Forms for bitcoin.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-11-05
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-01-10
 '''
 
 import os
 from traceback import format_exc
 from django.forms import ChoiceField, Form, ModelForm, ValidationError
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from blockchain_backup.bitcoin.constants import DEFAULT_BACKUPS_DIR
+from blockchain_backup.bitcoin.gen_utils import is_dir_writeable
 from blockchain_backup.bitcoin.models import Preferences
 from blockchain_backup.bitcoin.preferences import bin_dir_ok, data_dir_ok
 from blockchain_backup.bitcoin.state import get_backup_dates_and_dirs
-from blockchain_backup.bitcoin.utils import is_dir_writeable
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.os.user import getdir, whoami
 
 
@@ -33,6 +33,7 @@ class RestoreForm(Form):
             False
         '''
         super(RestoreForm, self).__init__(*args, **kwargs)
+
         backup_dates, preselected_date = get_backup_dates_and_dirs()
         self.required = len(backup_dates) > 1
         self.fields['backup_dates_with_dirs'] = ChoiceField(
@@ -52,7 +53,7 @@ class PreferencesForm(ModelForm):
             True
         '''
         super(PreferencesForm, self).__init__(*args, **kwargs)
-        self.log = get_log()
+        self.log = Log()
 
     def clean_data_dir(self):
         '''
