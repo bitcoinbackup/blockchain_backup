@@ -4,7 +4,7 @@
     The match pattern is a regular expression.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Last modified: 2020-12-27
 '''
 
 import argparse
@@ -13,13 +13,13 @@ import re
 import sys
 from threading import Thread
 
-from denova.os.command import run
+from denova.os.command import run as run_command
 from denova.os.process import is_program_running #, kill
-from denova.python.log import get_log
+from denova.python.log import Log
 
 DEBUG = True
 
-log = get_log()
+log = Log()
 
 class KillProcess(Thread):
     ''' Kill a pid.
@@ -38,7 +38,7 @@ class KillProcess(Thread):
         try:
             if DEBUG: log(f'in run kill pid: {self.killpid}') # DEBUG
             #kill(self.killpid)
-            run('killsafe', self.killpid)
+            run_command(*['killsafe', self.killpid])
         except Exception as e:
             # unclear why killsafe returns an error even though it
             # does successfully kill the job, but we'll just
@@ -61,7 +61,7 @@ def main():
 
 def kill_pattern(pattern):
     log(f'killing all instances of {pattern}')
-    raw = run('psgrep', pattern)
+    raw = run_command(*['psgrep', pattern])
     try:
         # kill earlier pids first to try to prevent respawning
         pids = []

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 '''
-    Copyright 2019-2020 DeNova
-    Last modified: 2020-10-22
+    Copyright 2019-2021 DeNova
+    Last modified: 2021-07-11
 '''
 
 import argparse
@@ -27,9 +27,9 @@ except: # 'bare except' because it catches more than "except Exception"
 from django.utils.timezone import now
 
 from denova.net.utils import send_api_request
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 MAX_TRIES = 5
 
@@ -39,7 +39,7 @@ PROXY_TYPE = 'https'
 PROXY_DICT = {PROXY_TYPE:'IP_ADDRESS:PORT'}
 
 HOST = 'https://denova.com'
-API_URL = 'open_source/blockchain_backup/api/'
+API_URL = 'open/blockchain_backup/api/'
 PARAMS = {'action': 'versions', 'api_version': '1.1'}
 
 def main(args):
@@ -142,7 +142,7 @@ def update_database(result):
     '''
         Update the database.
 
-        >>> result = {'versions': {'ok': True, 'message': {'blockchain_backup': '1.3', 'core': '0.20.1'}}}
+        >>> result = {'versions': {'ok': True, 'message': {'blockchain_backup': '1.3', 'core': '0.21.0'}}}
         >>> update_database(result)
     '''
     # import late so we can run tests without changing the database
@@ -150,13 +150,10 @@ def update_database(result):
 
     current_time = now()
     bcb_version = result['versions']['message']['blockchain_backup']
-    core_version = result['versions']['message']['core']
 
     state.set_last_update_time(current_time)
     state.set_latest_bcb_version(bcb_version)
-    state.set_latest_core_version(core_version)
     log(f'current version: {bcb_version} at {current_time}')
-    log(f'core_version: {core_version} at {current_time}')
 
 def parse_args():
     ''' Parsed command line. '''

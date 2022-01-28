@@ -2,8 +2,8 @@
 '''
     Build the virtualenv for blockchain_backup.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-12-07
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-07-21
 '''
 
 import argparse
@@ -50,11 +50,13 @@ class BlockchainBackupBuildVenv(BuildVenv):
         def make_exec_and_link(virtual_bin_dir, path, to_path=None):
             ''' Make the path executable and link to virtualenv bin. '''
 
-            run('chmod', '+x', path)
+            command_args = ['chmod', '+x', path]
+            run(*command_args)
             if to_path:
-                run('ln', '-s', path, os.path.join(virtual_bin_dir, to_path))
+                command_args = ['ln', '-s', path, os.path.join(virtual_bin_dir, to_path)]
             else:
-                run('ln', '-s', path, virtual_bin_dir)
+                command_args = ['ln', '-s', path, virtual_bin_dir]
+            run(*command_args)
 
         print('   linking packages')
 
@@ -62,11 +64,13 @@ class BlockchainBackupBuildVenv(BuildVenv):
 
         # add links to packages and modules used by blockchain backup
         blockchain_backup_pkg = os.path.join(self.projects_dir, 'blockchain_backup')
-        run('ln', '-s', os.path.join(blockchain_backup_pkg), site_packages_dir)
+        command_args = ['ln', '-s', os.path.join(blockchain_backup_pkg), site_packages_dir]
+        run(*command_args)
 
         # add a link to the ve module
         ve_module = os.path.join(site_packages_dir, 'denova', 'python', 've.py')
-        run('ln', '-s', ve_module, site_packages_dir)
+        command_args = ['ln', '-s', ve_module, site_packages_dir]
+        run(*command_args)
 
         # add link to apps used by blockchain backup
         make_exec_and_link(virtual_bin_dir, os.path.join(blockchain_backup_pkg, 'config', 'killmatch.py'), to_path='killmatch')
@@ -74,20 +78,41 @@ class BlockchainBackupBuildVenv(BuildVenv):
 
         # create links to safecopy so we can distinguish between a restore and a backup
         safecopy_path = os.path.join(virtual_bin_dir, 'safecopy')
-        run('ln', '-s', safecopy_path, os.path.join(virtual_bin_dir, 'bcb-backup'))
-        run('ln', '-s', safecopy_path, os.path.join(virtual_bin_dir, 'bcb-restore'))
+        command_args =  ['ln', '-s', safecopy_path, os.path.join(virtual_bin_dir, 'bcb-backup')]
+        run(*command_args)
+        command_args = ['ln', '-s', safecopy_path, os.path.join(virtual_bin_dir, 'bcb-restore')]
+        run(*command_args)
 
         # link debian packages
-        run('ln', '-s', '/usr/lib/python3/dist-packages/socks.py', site_packages_dir)
-        run('ln', '-s', '/usr/lib/python3/dist-packages/websockets', site_packages_dir)
+        command_args = ['ln', '-s', '/usr/lib/python3/dist-packages/socks.py', site_packages_dir]
+        run(*command_args)
+        command_args = ['ln', '-s', '/usr/lib/python3/dist-packages/websockets', site_packages_dir]
+        run(*command_args)
 
+        self.copy_service_file('blockchain-backup-server.service')
+        self.copy_service_file('blockchain-backup-bitcoin-core.service')
+
+    def copy_service_file(self, filename):
+        '''
+            Copy service file to the config subdirectory.
+        '''
+
+        SERVICE_PATH = os.path.join('/etc/systemd/system', filename)
+        if os.path.exists(SERVICE_PATH):
+            try:
+                command_args = ['cp', SERVICE_PATH, self.current_dir]
+                run(*command_args)
+            except:
+                # if this fails, that's ok
+                pass
 
     def finish_build(self):
         ''' Finish build with finally links.'''
 
         virtual_bin_dir = os.path.join(self.virtualenv_dir(), 'bin')
         if not os.path.exists(os.path.join(virtual_bin_dir, 'uwsgi')):
-            run('ln', '-s', '/usr/bin/uwsgi', virtual_bin_dir)
+            command_args = ['ln', '-s', '/usr/bin/uwsgi', virtual_bin_dir]
+            run(*command_args)
 
 def main():
     print(' Building the virtual environment')

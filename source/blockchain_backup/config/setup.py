@@ -2,8 +2,8 @@
 '''
     Set up blockchain_backup.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-12-04
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-04-30
 '''
 
 import os
@@ -17,9 +17,9 @@ from denova.os.command import run, run_verbose
 from denova.os.fs import cd
 from denova.os.osid import is_windows
 from denova.python import text_file
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 SERVER_NAME = 'blockchain-backup.local'
 HOME_DIR = os.path.join(os.sep, 'home')
@@ -64,6 +64,8 @@ def config_webserver(project_dir, user):
         build_venv()
 
     config_perms(os.path.join(project_dir, 'data'), user)
+    config_perms(os.path.join(project_dir, 'packages'), user)
+    config_perms(os.path.join(project_dir, 'virtualenv3'), user)
 
     print(' Configuring the web server')
     add_server_name_to_hosts()
@@ -73,20 +75,16 @@ def config_webserver(project_dir, user):
 
     # configure and start nginx
     if not os.path.exists('/etc/nginx/sites-enabled/blockchain-backup'):
-        run('ln', '-s', '/etc/nginx/sites-available/blockchain-backup', '/etc/nginx/sites-enabled')
-    run('systemctl', 'restart', 'nginx')
+        run(*['ln', '-s', '/etc/nginx/sites-available/blockchain-backup', '/etc/nginx/sites-enabled'])
+    run(*['systemctl', 'restart', 'nginx'])
 
     # configure blockchain-backup's servers
-    run('systemctl', 'enable', 'blockchain-backup-django-server')
-    run('systemctl', 'start', 'blockchain-backup-django-server')
-    """
-    run('systemctl', 'enable', 'blockchain-backup-socketio-server')
-    run('systemctl', 'start', 'blockchain-backup-socketio-server')
-    """
+    run(*['systemctl', 'enable', 'blockchain-backup-server'])
+    run(*['systemctl', 'start', 'blockchain-backup-server'])
 
     # configure bitcoin-core
-    run('systemctl', 'enable', 'blockchain-backup-bitcoin-core')
-    run('systemctl', 'start', 'blockchain-backup-bitcoin-core')
+    run(*['systemctl', 'enable', 'blockchain-backup-bitcoin-core'])
+    run(*['systemctl', 'start', 'blockchain-backup-bitcoin-core'])
 
 def config_special_settings(dirname):
     '''
@@ -225,7 +223,7 @@ def build_venv():
     try:
         # we use stdout=sys.stdout so print() updates goto the screen
         python_command = os.path.join(os.sep, 'usr', 'bin', 'python3')
-        run_verbose(python_command, './build_venv.py')
+        run_verbose(*[python_command, './build_venv.py'])
     except CalledProcessError as cpe:
         msg = f'Unable to build virtual environment.\nerror returncode: {cpe.returncode}' + '\n'
         # shouldn't be any stdout since we directed it to sys.stdout
@@ -244,8 +242,8 @@ def build_venv():
 def config_perms(target_dir, user):
     ''' Configure the permissions for the dir. '''
 
-    run('chown', '-R', f'{user}:{user}', target_dir)
-    run('chmod', '-R', 'u=rwx,g=rx,o=rx', target_dir)
+    run(*['chown', '-R', f'{user}:{user}', target_dir])
+    run(*['chmod', '-R', 'u=rwx,g=rx,o=rx', target_dir])
 
 def add_server_name_to_hosts():
     ''' Add blockchain-backup.local to /etc/hosts. '''
@@ -280,14 +278,14 @@ def config_logs(project_dir, primary_user):
         if not os.path.exists(user_log_dir):
             os.mkdir(user_log_dir)
 
-        run('chown', f'{user}:{user}', user_log_dir)
-        run('chmod', 'u+rwx,g-rwx,o-rwx', user_log_dir)
+        run(*['chown', f'{user}:{user}', user_log_dir])
+        run(*['chmod', 'u+rwx,g-rwx,o-rwx', user_log_dir])
 
 
     MAIN_LOG_DIR = os.path.join(os.sep, 'var', 'local', 'log')
     if not os.path.exists(MAIN_LOG_DIR):
         os.makedirs(MAIN_LOG_DIR)
-    run('chmod', 'u+rwx,g+rx,o+rx', MAIN_LOG_DIR)
+    run(*['chmod', 'u+rwx,g+rx,o+rx', MAIN_LOG_DIR])
 
     config_user_log_dir(os.path.join(MAIN_LOG_DIR, 'root'), 'root')
     config_user_log_dir(os.path.join(MAIN_LOG_DIR, 'www-data'), 'www-data')
@@ -299,15 +297,15 @@ def install_config_safelog(pip3_command):
     '''
     PYPI_SERVICE_PATH = os.path.join(os.sep, 'usr', 'local', 'systemd', 'user', 'safelog.service')
 
-    run(pip3_command, 'install', '--upgrade', 'safelog')
+    run(*[pip3_command, 'install', '--upgrade', 'safelog'])
 
     # only copy the safelog service, if it doesn't already exist
     safelog_service_path = os.path.join(os.sep, 'etc', 'systemd', 'system', 'safelog.service')
     if not os.path.exists(safelog_service_path):
         if os.path.exists(PYPI_SERVICE_PATH):
             copyfile(PYPI_SERVICE_PATH, safelog_service_path)
-            run('systemctl', 'enable', 'safelog')
-            run('systemctl', 'start', 'safelog')
+            run(*['systemctl', 'enable', 'safelog'])
+            run(*['systemctl', 'start', 'safelog'])
         else:
             print('Unable to find safelog service file. Logging disabled.')
 
@@ -315,7 +313,7 @@ def pip_install_pkgs(pip3_command):
     ''' Pip install packages needed during setup. '''
 
     # pip install without input and ignore if it already exists
-    run(pip3_command, 'install', 'pexpect', '--no-input', '--exists-action', 'i')
+    run(*[pip3_command, 'install', 'pexpect', '--no-input', '--exists-action', 'i'])
 
 def gen_nginx_ssl_cert():
     '''
@@ -349,7 +347,7 @@ def get_pip3_command():
     ''' Return the full path to pip3. '''
 
     try:
-        pip_command = run('which', 'pip3').stdout.strip()
+        pip_command = run(*['which', 'pip3']).stdout.strip()
         if not os.path.exists(pip_command):
             pip_command = 'pip3'
     except CalledProcessError as cpe:
