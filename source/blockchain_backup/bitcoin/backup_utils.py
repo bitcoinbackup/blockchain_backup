@@ -2,7 +2,7 @@
     Utilities for backing up the blockchain.
 
     Copyright 2018-2022 DeNova
-    Last modified: 2022-01-27
+    Last modified: 2022-01-31
 '''
 
 import json
@@ -133,21 +133,21 @@ def start_backup(data_dir, to_backup_dir):
     if is_backup_running():
         backup_process = None
         backup_pid = get_pid(constants.BACKUP_PROGRAM)
-        log('{} is already running using pid: {}'.format(
-          constants.BACKUP_PROGRAM, backup_pid))
+        log(f'{constants.BACKUP_PROGRAM} is already running using pid: {backup_pid}')
     else:
         backup_pid = None
 
         args = []
         # "bcb-backup" is a link to safecopy so we can distinguish it when we kill it
         args.append(os.path.join(bin_dir, constants.BACKUP_PROGRAM))
-        args.append('--exclude')
-        args.append(get_excluded_files())
         args.append('--verbose')
         args.append('--quick')
         args.append('--delete')
+        args.append('--exclude')
+        args.append(get_excluded_files())
         args.append(f'{data_dir}*')
         args.append(to_backup_dir)
+        log(f'args: {args}')
 
         # Popen appears to report "'list' object has no attribute 'split'"
         # the docs state Popen should pass a sequence as the first arg
@@ -257,8 +257,7 @@ def stop_backup(backup_process, backup_pid):
             if is_backup_running():
                 bin_dir = os.path.join(virtualenv_dir(), 'bin')
                 args = [os.path.join(bin_dir, 'killmatch'),
-                        '"{} --exclude {}"'.format(
-                         constants.BACKUP_PROGRAM, get_excluded_files())]
+                        f'"{constants.BACKUP_PROGRAM}"']
                 result = command.run(*args).stdout
                 log(f'killing backup result: {result}')
 
@@ -795,12 +794,21 @@ def get_excluded_files():
 
         >>> from blockchain_backup.bitcoin.tests import utils as test_utils
         >>> test_utils.init_database()
-        >>> get_excluded_files()
-        'wallets,wallet.dat,.walletlock,backups,blockchain_backup_database'
+        >>> excluded_paths = get_excluded_files()
+        >>> '/tmp/bitcoin/data/testnet3/backups/' in excluded_paths
+        True
+        >>> 'wallets' in excluded_paths
+        True
+        >>> 'wallet.da' in excluded_paths
+        True
+        >>> '.walletlock' in excluded_paths
+        True
+        >>> 'blockchain_backup_database' in excluded_paths
+        True
     '''
 
-    excluded_files = 'wallets,wallet.dat,.walletlock,backups,{}'.format(
-      constants.BLOCKCHAIN_BACKUP_DB_DIR)
+    excluded_paths = preferences.get_backup_dir()
+    excluded_files = f'wallets,wallet.dat,.walletlock,{constants.BLOCKCHAIN_BACKUP_DB_DIR}'
 
     use_test_net = constants.TESTNET_FLAG in preferences.get_extra_args()
     if not use_test_net:
@@ -811,7 +819,15 @@ def get_excluded_files():
     if backup_subdir is not None and backup_subdir not in excluded_files:
         excluded_files += f',{backup_subdir}'
 
-    return excluded_files
+    data_dir = preferences.get_data_dir()
+
+    for excluded_file in excluded_files.split(','):
+        excluded_path = os.path.join(data_dir, excluded_file)
+        if excluded_path not in excluded_paths:
+            excluded_paths += ','
+            excluded_paths += excluded_path
+
+    return excluded_paths
 
 def delete_last_updated_files(dirname):
     '''
