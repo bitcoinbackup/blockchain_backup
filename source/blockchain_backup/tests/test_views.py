@@ -1,8 +1,8 @@
 '''
     Tests the views for blockchain_backup.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-10-25
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-05-02
 '''
 
 from ve import activate, virtualenv_dir
@@ -19,9 +19,9 @@ from django.test import Client, RequestFactory, TestCase
 
 from blockchain_backup import views
 from blockchain_backup.bitcoin.tests import utils
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 class ViewsTestCase(TestCase):
 
@@ -39,6 +39,15 @@ class ViewsTestCase(TestCase):
         self.assertTrue(b'<strong>Copyright:</strong>' in response.content)
         self.assertTrue(b'Next backup in' in response.content)
         self.assertTrue(b'Bitcoin Core version' in response.content)
+
+    def test_csrf_failure(self):
+        '''
+            Test csrf failure returns a 403.
+        '''
+
+        client = Client(enforce_csrf_checks=True)
+        response = client.post('/error_report/')
+        self.assertEqual(response.status_code, 403)
 
     def test_empty_response(self):
         '''

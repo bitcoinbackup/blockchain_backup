@@ -1,8 +1,8 @@
 '''
     Utilities for bitcoin tests.
 
-    Copyright 2019-2020 DeNova
-    Last modified: 2020-12-08
+    Copyright 2019-2021 DeNova
+    Last modified: 2021-07-14
 '''
 
 import os
@@ -14,13 +14,14 @@ from time import sleep
 from django.core.management import call_command
 from django.utils.timezone import now, utc
 
-from blockchain_backup.bitcoin import constants, preferences, state
-from blockchain_backup.bitcoin import utils as bitcoin_utils
+from blockchain_backup.bitcoin import constants, core_utils, preferences, state
+from blockchain_backup.bitcoin.backup_utils import get_excluded_files, is_backup_running
+from blockchain_backup.bitcoin.gen_utils import is_restore_running
 from blockchain_backup.bitcoin.models import Preferences, State
 from blockchain_backup.settings import PROJECT_PATH, TIME_ZONE
 from denova.os import command
 from denova.os.user import getdir
-from denova.python.log import get_log, get_log_path
+from denova.python.log import Log, get_log_path
 from denova.python.ve import virtualenv_dir
 
 
@@ -28,7 +29,7 @@ HOME_BITCOIN_DIR = os.path.join(getdir(), '.bitcoin')
 DATA_WITH_BLOCKS_DIR = '/tmp/bitcoin/data-with-blocks'
 INITIAL_DATA_DIR = '/tmp/bitcoin/data-initial'
 
-log = get_log()
+log = Log()
 
 def setup_tmp_dir():
     '''
@@ -199,7 +200,6 @@ def set_new_state(new_state):
         settings.last_backup_level = new_state.last_backup_level
         settings.last_update_time = new_state.last_update_time
         settings.latest_bcb_version = new_state.latest_bcb_version
-        settings.latest_core_version = new_state.latest_core_version
         state.save_state(settings)
 
 def init_database():
@@ -235,10 +235,10 @@ def start_bitcoind():
     bin_dir, data_dir = preferences.get_bitcoin_dirs()
 
     command_args = []
-    cmd = os.path.join(bin_dir, bitcoin_utils.bitcoind())
+    cmd = os.path.join(bin_dir, core_utils.bitcoind())
     command_args.append(cmd)
 
-    data_dir = bitcoin_utils.strip_testnet_from_data_dir(data_dir=data_dir)
+    data_dir = core_utils.strip_testnet_from_data_dir(data_dir=data_dir)
     command_args.append(f'-datadir={data_dir}')
 
     # don't allow any interaction with the user's wallet
@@ -256,7 +256,7 @@ def start_bitcoind():
 
     # give bitcoind time to start
     secs = 0
-    while (not bitcoin_utils.is_bitcoind_running() and secs < 5):
+    while (not core_utils.is_bitcoind_running() and secs < 5):
         sleep(1)
         secs += 1
 
@@ -267,14 +267,14 @@ def stop_bitcoind():
         >>> init_database()
         >>> stop_bitcoind()
     '''
-    while (bitcoin_utils.is_bitcoind_running()):
-        sleep(5)
+    while (core_utils.is_bitcoind_running()):
+        ##sleep(5)
         send_bitcoin_cli_cmd('stop')
 
     # give it a little more time to settle down
     sleep(5)
 
-    log(f'bitcoind running: {bitcoin_utils.is_bitcoind_running()}')
+    log(f'bitcoind running: {core_utils.is_bitcoind_running()}')
 
 def start_bitcoin_qt():
     '''
@@ -288,10 +288,10 @@ def start_bitcoin_qt():
     bin_dir, data_dir = preferences.get_bitcoin_dirs()
 
     command_args = []
-    cmd = os.path.join(bin_dir, bitcoin_utils.bitcoin_qt())
+    cmd = os.path.join(bin_dir, core_utils.bitcoin_qt())
     command_args.append(cmd)
 
-    data_dir = bitcoin_utils.strip_testnet_from_data_dir(data_dir=data_dir)
+    data_dir = core_utils.strip_testnet_from_data_dir(data_dir=data_dir)
     command_args.append(f'-datadir={data_dir}')
 
     extra_args = preferences.get_extra_args()
@@ -306,7 +306,7 @@ def start_bitcoin_qt():
 
     # give bitcoind time to start
     secs = 0
-    while (not bitcoin_utils.is_bitcoin_qt_running() and secs < 5):
+    while (not core_utils.is_bitcoin_qt_running() and secs < 5):
         sleep(1)
         secs += 1
 
@@ -318,7 +318,7 @@ def stop_bitcoin_qt():
         >>> stop_bitcoin_qt()
     '''
     seconds = 0
-    while (bitcoin_utils.is_bitcoin_qt_running() and seconds < 60):
+    while (core_utils.is_bitcoin_qt_running() and seconds < 60):
         try:
             send_bitcoin_cli_cmd('stop')
             sleep(5)
@@ -327,15 +327,15 @@ def stop_bitcoin_qt():
             pass
 
     # use brute force if necessary
-    if bitcoin_utils.is_bitcoin_qt_running():
+    if core_utils.is_bitcoin_qt_running():
         bin_dir = os.path.join(virtualenv_dir(), 'bin')
-        args = [os.path.join(bin_dir, 'killmatch'), bitcoin_utils.bitcoin_qt()]
+        args = [os.path.join(bin_dir, 'killmatch'), core_utils.bitcoin_qt()]
         command.run(*args).stdout
 
     # give it a little more time to settle down
     sleep(5)
 
-    log(f'bitcoin-qt running: {bitcoin_utils.is_bitcoin_qt_running()}')
+    log(f'bitcoin-qt running: {core_utils.is_bitcoin_qt_running()}')
 
 def stop_bitcoin_core_apps():
     '''
@@ -343,22 +343,24 @@ def stop_bitcoin_core_apps():
 
         >>> stop_bitcoin_core_apps()
     '''
-    if bitcoin_utils.is_bitcoin_qt_running():
+    if core_utils.is_bitcoin_qt_running():
+        log('bitcoinqt is running')
         stop_bitcoin_qt()
 
         # if it's still running, then kill it
-        if bitcoin_utils.is_bitcoin_qt_running():
+        if core_utils.is_bitcoin_qt_running():
             bin_dir = os.path.join(virtualenv_dir(), 'bin')
-            args = [os.path.join(bin_dir, 'killmatch'), bitcoin_utils.bitcoin_qt()]
+            args = [os.path.join(bin_dir, 'killmatch'), core_utils.bitcoin_qt()]
             command.run(*args).stdout
 
-    if bitcoin_utils.is_bitcoind_running():
+    if core_utils.is_bitcoind_running():
+        log('bitcoind is running')
         stop_bitcoind()
 
         # if it's still running, then kill it
-        if bitcoin_utils.is_bitcoind_running():
+        if core_utils.is_bitcoind_running():
             bin_dir = os.path.join(virtualenv_dir(), 'bin')
-            args = [os.path.join(bin_dir, 'killmatch'), bitcoin_utils.bitcoind()]
+            args = [os.path.join(bin_dir, 'killmatch'), core_utils.bitcoind()]
             command.run(*args).stdout
 
 def send_bitcoin_cli_cmd(arg):
@@ -374,14 +376,14 @@ def send_bitcoin_cli_cmd(arg):
     bin_dir, data_dir = preferences.get_bitcoin_dirs()
 
     command_args = []
-    command_args.append(os.path.join(bin_dir, bitcoin_utils.bitcoin_cli()))
+    command_args.append(os.path.join(bin_dir, core_utils.bitcoin_cli()))
 
     use_test_net = '-testnet' in preferences.get_extra_args()
     if use_test_net:
         command_args.append('-testnet')
 
     if data_dir is not None:
-        data_dir = bitcoin_utils.strip_testnet_from_data_dir(data_dir=data_dir)
+        data_dir = core_utils.strip_testnet_from_data_dir(data_dir=data_dir)
         command_args.append(f'-datadir={data_dir}')
 
     command_args.append(arg)
@@ -399,15 +401,15 @@ def check_bitcoin_log(is_app_running_func=None):
     '''
         Check bitcoin log to see if app shutdown properly.
 
-        >>> check_bitcoin_log(bitcoin_utils.is_bitcoind_running)
-        (True, None)
+        >>> check_bitcoin_log(core_utils.is_bitcoind_running)
+        (True, 'Aborted block database rebuild. Exiting.\\n')
     '''
     from blockchain_backup.bitcoin.manager import BitcoinManager
 
     manager = BitcoinManager(os.path.basename(get_log_path()), use_fresh_debug_log=False)
     log(f'checking {get_log_path()} for errors')
 
-    shutdown, error_message = manager.check_bitcoin_log(is_app_running_func)
+    shutdown, error_message = core_utils.check_bitcoin_log(manager.data_dir, is_app_running_func)
     log(f'shutdown: {shutdown}')
     log(f'error_message: {error_message}')
 
@@ -438,11 +440,11 @@ def stop_backup():
         >>> init_database()
         >>> stop_backup()
     '''
-    while bitcoin_utils.is_backup_running():
+    while is_backup_running():
         sleep(5)
 
         bin_dir = os.path.join(virtualenv_dir(), 'bin')
-        excluded_files = bitcoin_utils.get_excluded_files()
+        excluded_files = get_excluded_files()
         args = [os.path.join(bin_dir, 'killmatch'),
                 f'"{constants.BACKUP_PROGRAM} --exclude {excluded_files}"']
         result = command.run(*args).stdout
@@ -473,11 +475,11 @@ def stop_restore():
         >>> init_database()
         >>> stop_restore()
     '''
-    while bitcoin_utils.is_restore_running():
+    while is_restore_running():
         sleep(5)
 
         bin_dir = os.path.join(virtualenv_dir(), 'bin')
-        excluded_files = bitcoin_utils.get_excluded_files()
+        excluded_files = get_excluded_files()
         args = [os.path.join(bin_dir, 'killmatch'),
                 f'"{constants.RESTORE_PROGRAM} --exclude {excluded_files}"']
         result = command.run(*args).stdout

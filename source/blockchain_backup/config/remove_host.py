@@ -3,7 +3,7 @@
     Remove blockchain-backup.local from /etc/hosts.
 
     Copyright 2018-2020 DeNova
-    Last modified: 2020-11-02
+    Last modified: 2020-12-27
 '''
 
 import os.path
@@ -17,9 +17,9 @@ def main():
         >>> from denova.os.user import whoami
         >>> if whoami() == 'root':
         ...     from denova.os.command import run
-        ...     run('cp', '/etc/hosts', '/etc/hosts.bak')
+        ...     run(*['cp', '/etc/hosts', '/etc/hosts.bak'])
         ...     main()
-        ...     run('cp', '/etc/hosts.bak', '/etc/hosts')
+        ...     run(*['cp', '/etc/hosts.bak', '/etc/hosts'])
     '''
 
     SERVER_NAME = 'blockchain-backup.local'

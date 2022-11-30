@@ -1,0 +1,36 @@
+{% comment %}
+    Handle long polling for blockchain backup.
+
+    This javascript must be processed by django templates.
+
+    Copyright 2021 DeNova
+    Last modified: 2021-05-21
+{% endcomment %}
+{% load i18n custom %}
+
+'use strict';
+
+var PAGE_UPDATES_URL = "/bitcoin/page_updates/";
+let prev_updates = null;
+
+function handle_page_response(data) {
+
+    // console.log('page response: ' + 'type ' + classof(data) );
+    if (data === prev_updates) {
+        // console.log('data not changed');
+        // alert('data not changed'); // DEBUG
+    }
+    else {
+        prev_updates = data
+        if (data != undefined) {
+            process_response(data);
+        }
+    }
+}
+
+async function poll_updates() {
+    await poll(PAGE_UPDATES_URL,
+               csrftoken,
+               handle_page_response);
+}
+window.addEventListener('load', poll_updates);

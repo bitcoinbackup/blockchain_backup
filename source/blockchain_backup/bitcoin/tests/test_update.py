@@ -1,8 +1,8 @@
 '''
     Tests for updating the blockchain.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-10-07
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-07-14
 '''
 
 from ve import activate, virtualenv_dir
@@ -18,17 +18,18 @@ from unittest import TestCase
 from django.utils.timezone import now, utc
 from django.test import RequestFactory
 
+from blockchain_backup.bitcoin.backup_utils import is_backup_running
+from blockchain_backup.bitcoin.core_utils import check_bitcoin_log, is_bitcoind_running
 from blockchain_backup.bitcoin.models import Preferences
 from blockchain_backup.bitcoin.preferences import get_data_dir, get_preferences, save_preferences
 from blockchain_backup.bitcoin.state import get_backups_enabled, set_backups_enabled
 from blockchain_backup.bitcoin.tests import utils as test_utils
 from blockchain_backup.bitcoin.update import UpdateTask
-from blockchain_backup.bitcoin.utils import is_backup_running, is_bitcoind_running
 from blockchain_backup.bitcoin.views import Backup, InterruptBackup, Update, InterruptUpdate
 from denova.django_addons.singleton import get_singleton, save_singleton
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 class TestUpdate(TestCase):
 
@@ -71,10 +72,12 @@ class TestUpdate(TestCase):
 
         self.assertFalse(is_bitcoind_running())
 
-        shutdown, error_message = test_utils.check_bitcoin_log(is_bitcoind_running)
+        shutdown, error_message = check_bitcoin_log(get_data_dir(), is_bitcoind_running)
         self.assertTrue(shutdown)
         error = error_message.strip(' ')
-        error_found = 'Fatal LevelDB error' in error or 'Error opening block database' in error
+        error_found = ('Fatal LevelDB error' in error or
+                       'Error opening block database' in error or
+                       'Aborted block database rebuild. Exiting.' in error)
         self.assertTrue(error_found)
 
         self.assertFalse(get_backups_enabled())
@@ -102,7 +105,7 @@ class TestUpdate(TestCase):
 
         self.assertFalse(is_bitcoind_running())
 
-        shutdown, error_message = test_utils.check_bitcoin_log(is_bitcoind_running)
+        shutdown, error_message = check_bitcoin_log(get_data_dir(), is_bitcoind_running)
         self.assertTrue(shutdown)
         log(error_message)
         self.assertTrue('Aborted block database rebuild. Exiting.' in error_message or
@@ -128,7 +131,7 @@ class TestUpdate(TestCase):
         self.assertTrue(b'The Bitcoin binary directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin data directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin backup directory is not valid.' in response.content)
-        self.assertTrue(b'Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
+        self.assertTrue(b'Click <a class="btn btn-secondary" id="preferences-id" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
 
         self.assertTrue(get_backups_enabled())
 
@@ -149,7 +152,7 @@ class TestUpdate(TestCase):
         self.assertFalse(b'The Bitcoin binary directory is not valid.' in response.content)
         self.assertTrue(b'The Bitcoin data directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin backup directory is not valid.' in response.content)
-        self.assertTrue(b'Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
+        self.assertTrue(b'Click <a class="btn btn-secondary" id="preferences-id" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
 
         self.assertTrue(get_backups_enabled())
 

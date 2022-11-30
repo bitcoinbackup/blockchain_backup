@@ -1,12 +1,12 @@
-/**
- * Handle blockchain backup updates from Bitcoin Core.
- *
- * If you are viewing this in a browser, this code is automatically generated.
- * Use the source.
- *
- * Copyright 2019-2021 DeNova
- * Last modified: 2021-07-16
-**/
+{% comment %}
+    Handle short polling for blockchain backup.
+
+    This javascript must be processed by django templates.
+
+    Copyright 2021 DeNova
+    Last modified: 2021-07-16
+{% endcomment %}
+{% load i18n custom %}
 
 'use strict';
 
@@ -63,8 +63,8 @@ function update_html(name, value) {
 
     let element = document.getElementById(name);
     if (element) {
-        element.innerHTML = value;
-        //$('#' + name).html(value);
+        //element.innerHTML = value;
+        $('#' + name).html(value);
     }
     else {
         // check if multiple elements to update

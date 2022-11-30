@@ -22,9 +22,9 @@ from blockchain_backup.bitcoin import preferences
 from blockchain_backup.bitcoin.models import Preferences
 from blockchain_backup.bitcoin.tests import utils as test_utils
 from blockchain_backup.bitcoin.views import ChangePreferences
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 
 class TestPreferences(TestCase):

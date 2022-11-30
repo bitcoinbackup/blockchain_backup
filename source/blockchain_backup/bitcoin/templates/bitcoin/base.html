@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% comment %}
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-09-25
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-07-12
 {% endcomment %}
 {% load i18n custom %}
 
@@ -9,7 +9,7 @@
 <div class="container">
     {% block page_header %}
         {% subtitle %}
-            <div id="header">
+            <div id="header-id">
                 {{ header | safe }}
             </div>
         {% endsubtitle %}
@@ -24,10 +24,10 @@
         </p>
     </noscript>
 
-    <div id="alert" name="alert" class="card text-white mb-4 px-2" style="max-width: 45rem; background-color:{{ alert_color|default:'blue' }}">
+    <div id="alert-id" name="alert-name" class="card text-white mb-4 px-2" style="max-width: 45rem; background-color:{{ alert_color|default:'blue' }}">
         <p class="card-text">
             <br/>
-            <div id="notice" title="{{ notice_time }}">
+            <div id="notice-id" title="{{ notice_time }}">
             {% block page_notice %}
                 {{ notice | safe }}
             {% endblock page_notice %}
@@ -39,7 +39,7 @@
     <div style="max-width: 45rem">
         <p title="{{ subnotice_time }}">
             {% block page_subnotice %}
-                <div id="subnotice">
+                <div id="subnotice-id">
                     {{ subnotice | safe }}
                 </div>
             {% endblock page_subnotice %}
@@ -49,7 +49,7 @@
     {% block progress %}
     <div style="max-width: 45rem" title="{{ progress_time_html }}">
         {% block page_progress %}
-            <div id="progress">
+            <div id="progress-id">
                 {{ progress | safe }}
             </div>
         {% endblock page_progress %}
@@ -57,7 +57,7 @@
     {% endblock progress %}
 
     {% block button %}
-    <div id="button"  style="max-width: 45rem" title="{{ button_time_html }}">
+    <div id="button-id"  style="max-width: 45rem" title="{{ button_time_html }}">
         &nbsp;
     </div>
     {% endblock button %}
@@ -66,12 +66,17 @@
 
 {% block extrascript %}
     {{ block.super }}
-    {% comment %}
-    <script type='text/javascript' src='/static/js/debug.js'></script>
-    <script type='text/javascript' src='/static/js/bitcoin.js'></script>
-    {% endcomment %}
-    <script type='text/javascript'>
-    {% include 'static/js/debug.js' %}
-    {% include 'static/js/bitcoin.js' %}
+    <script type="text/javascript">
+        {% include 'static/js/denova.js' %}
+        {% if use_long_polling %}
+
+            {% include 'bitcoin/clips/long_polling.js.html' %}
+
+        {% else %}
+
+            {% include 'bitcoin/clips/short_polling.js.html' %}
+
+        {% endif %}
+        {% include 'static/js/bitcoin.js' %}
     </script>
 {% endblock extrascript %}

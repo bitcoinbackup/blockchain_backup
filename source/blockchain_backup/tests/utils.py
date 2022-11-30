@@ -17,12 +17,12 @@ from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.support.expected_conditions import element_to_be_clickable
 from selenium.webdriver.support.wait import WebDriverWait
 
-from denova.python.log import get_log
+from denova.python.log import Log
 from denova.python.times import timestamp
 
 from blockchain_backup.settings import CONTENT_HOME_URL
 
-log = get_log()
+log = Log()
 
 class BlockchainBackupTestCase(StaticLiveServerTestCase):
     ''' Superclass for blockchain_backup test cases. '''
@@ -77,7 +77,7 @@ class BlockchainBackupTestCase(StaticLiveServerTestCase):
             This may only get the data since the last call to get_console_log().
         '''
 
-        data = self.driver.get_log('browser')
+        data = self.driver.Log('browser')
         return data
 
     def body_text(self):

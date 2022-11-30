@@ -2,8 +2,8 @@
 '''
     Upstream server for django.
 
-    Copyright 2018-2021 DeNova
-    Last modified: 2021-04-30
+    Copyright 2018-2022 DeNova
+    Last modified: 2022-08-21
 '''
 
 import argparse
@@ -118,6 +118,8 @@ def stop():
         log('django server threw a CalledProcessError while stopping')
         log(scpe)
         run(*['killmatch', 'blockchain-backup-server'])
+    except FileNotFoundError:
+        log('unable to kill job because "fuser" not installed')
     except Exception as e:
         log('django servers threw an unexpected exception while stopping')
         log(e)

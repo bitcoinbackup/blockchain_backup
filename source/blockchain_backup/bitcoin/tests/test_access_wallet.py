@@ -1,8 +1,8 @@
 '''
     Tests for accessing the bitcoin wallet.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-10-07
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-07-14
 '''
 
 from ve import activate, virtualenv_dir
@@ -17,16 +17,17 @@ from unittest import TestCase
 from django.utils.timezone import now, utc
 from django.test import RequestFactory
 
+from blockchain_backup.bitcoin.core_utils import check_bitcoin_log, is_bitcoind_running, is_bitcoin_qt_running
+from blockchain_backup.bitcoin.backup_utils import is_backup_running
 from blockchain_backup.bitcoin.models import Preferences
 from blockchain_backup.bitcoin.preferences import get_data_dir, get_preferences, save_preferences
 from blockchain_backup.bitcoin.state import get_backups_enabled
 from blockchain_backup.bitcoin.tests import utils as test_utils
 from blockchain_backup.bitcoin.access_wallet import AccessWalletTask
-from blockchain_backup.bitcoin.utils import is_backup_running, is_bitcoind_running, is_bitcoin_qt_running
 from blockchain_backup.bitcoin.views import Backup, InterruptBackup, AccessWallet
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 class TestAccessWallet(TestCase):
 
@@ -66,7 +67,7 @@ class TestAccessWallet(TestCase):
         self.assertTrue(b'The Bitcoin binary directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin data directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin backup directory is not valid.' in response.content)
-        self.assertTrue(b'Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
+        self.assertTrue(b'Click <a class="btn btn-secondary" id="preferences-id" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
 
     def test_access_wallet_with_bad_data_dir(self):
         '''
@@ -85,7 +86,7 @@ class TestAccessWallet(TestCase):
         self.assertFalse(b'The Bitcoin binary directory is not valid.' in response.content)
         self.assertTrue(b'The Bitcoin data directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin backup directory is not valid.' in response.content)
-        self.assertTrue(b'Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
+        self.assertTrue(b'Click <a class="btn btn-secondary" id="preferences-id" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
 
     def test_access_wallet_with_bitcoind_running(self):
         '''
@@ -154,7 +155,7 @@ class TestAccessWallet(TestCase):
         error_message = None
         secs = 0
         while not done:
-            shutdown, error_message = test_utils.check_bitcoin_log()
+            shutdown, error_message = check_bitcoin_log(get_data_dir())
             if error_message:
                 error = error_message.strip(' ')
                 error_found = 'Fatal LevelDB error' in error or 'Error opening block database' in error
@@ -164,7 +165,7 @@ class TestAccessWallet(TestCase):
                 secs += WAIT_SECONDS
 
         if not error_found:
-            shutdown, error_message = test_utils.check_bitcoin_log()
+            shutdown, error_message = check_bitcoin_log(get_data_dir())
             self.assertTrue(shutdown)
             error = error_message.strip(' ')
             error_found = 'Fatal LevelDB error' in error or 'Error opening block database' in error

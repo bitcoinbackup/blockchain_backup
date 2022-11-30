@@ -1,7 +1,7 @@
 {% extends "bitcoin/base.html" %}
 {% comment %}
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-03-21
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-05-01
 
     Do not define header, notice, subnotice, or progress
     in this template. Make changes in bitcoin/views.py
@@ -11,3 +11,11 @@
 {% block titlevar %}
     Updating Bitcoin's Blockchain
 {% endblock %}
+
+    {% block page_header %}
+        {% subtitle %}
+            <div id="header-id">
+                Updating Bitcoin's Blockchain
+            </div>
+        {% endsubtitle %}
+    {% endblock page_header %}

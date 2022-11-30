@@ -1,0 +1,21 @@
+{% comment %}
+    Handle short polling for blockchain backup.
+
+    This javascript must be processed by django templates.
+
+    Copyright 2021 DeNova
+    Last modified: 2021-07-15
+{% endcomment %}
+{% load i18n custom %}
+
+'use strict';
+
+var update_period = {{ update_interval }};
+setInterval(update_ajax, update_period);
+{# console.log('update interval: ' + update_period); #}
+
+function update_ajax() {
+
+    $.get('/bitcoin/ajax/', process_response);
+}
+

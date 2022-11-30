@@ -1,8 +1,8 @@
 '''
     Tests for restoring the blockchain.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-10-08
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-07-14
 '''
 
 from ve import activate, virtualenv_dir
@@ -18,13 +18,16 @@ from django.utils.timezone import now, utc
 from django.test import Client, RequestFactory
 
 from blockchain_backup.bitcoin import preferences, state, views
+from blockchain_backup.bitcoin.backup_utils import is_backup_running
+from blockchain_backup.bitcoin.core_utils import check_bitcoin_log, is_bitcoind_running
+from blockchain_backup.bitcoin.gen_utils import is_restore_running
 from blockchain_backup.bitcoin.models import Preferences, State
-from blockchain_backup.bitcoin.tests import utils as test_utils
+from blockchain_backup.bitcoin.preferences import get_data_dir
 from blockchain_backup.bitcoin.restore import RestoreTask
-from blockchain_backup.bitcoin.utils import is_backup_running, is_bitcoind_running, is_restore_running
-from denova.python.log import get_log
+from blockchain_backup.bitcoin.tests import utils as test_utils
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 class TestRestore(TestCase):
 
@@ -135,7 +138,7 @@ class TestRestore(TestCase):
         if is_bitcoind_running():
             test_utils.stop_bitcoind()
 
-        shutdown, error_message = test_utils.check_bitcoin_log(is_bitcoind_running)
+        shutdown, error_message = check_bitcoin_log(get_data_dir(), is_bitcoind_running)
         self.assertTrue(shutdown)
         self.assertTrue(error_message is None)
 
@@ -197,7 +200,7 @@ class TestRestore(TestCase):
         if is_bitcoind_running():
             test_utils.stop_bitcoind()
 
-        shutdown, error_message = test_utils.check_bitcoin_log(is_bitcoind_running)
+        shutdown, error_message = check_bitcoin_log(get_data_dir(), is_bitcoind_running)
         self.assertTrue(shutdown)
         self.assertTrue(error_message is None)
 
@@ -276,7 +279,8 @@ class TestRestore(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b"<title>\nUnable to Restore the Blockchain | Blockchain Backup\n</title>" in response.content)
         self.assertTrue(b"Unable to Restore the Blockchain" in response.content)
-        self.assertTrue(b'The Bitcoin binary directory is not valid. Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
+        self.assertTrue(b'The Bitcoin binary directory is not valid.' in response.content)
+        self.assertTrue(b'Click <a class="btn btn-secondary" id="preferences-id" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
         self.assertFalse(b'Select backup to restore:' in response.content)
         self.assertFalse(b'<input type="submit" value="Yes, start restoring" name="yes-start-restoring-button" id="yes-start-restoring-id" alt="Yes, start restoring" class="btn btn-primary font-weight-bold " role="button"  title="Restore the blockchain now"/>' in response.content)
 
@@ -296,7 +300,8 @@ class TestRestore(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b"<title>\nUnable to Restore the Blockchain | Blockchain Backup\n</title>" in response.content)
         self.assertTrue(b"Unable to Restore the Blockchain" in response.content)
-        self.assertTrue(b'The Bitcoin data directory is not valid. Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
+        self.assertTrue(b'The Bitcoin data directory is not valid.' in response.content)
+        self.assertTrue(b'Preferences</a> to set it.' in response.content)
         self.assertFalse(b'Select backup to restore:' in response.content)
         self.assertFalse(b'<input type="submit" value="Yes, start restoring" name="yes-start-restoring-button" id="yes-start-restoring-id" alt="Yes, start restoring" class="btn btn-primary font-weight-bold " role="button"  title="Restore the blockchain now"/>' in response.content)
 

@@ -306,11 +306,13 @@ def get_last_backup_level():
     try:
         state = get_state()
         last_backup_level = state.last_backup_level
+        log(f'last_backup_level from db: {last_backup_level}') #DEBUG
         if last_backup_level is None:
             last_backup_level = 1
     except: # 'bare except' because it catches more than "except Exception"
         log(format_exc())
 
+    log(f'last_backup_level: {last_backup_level}') #DEBUG
     return last_backup_level
 
 def set_last_backup_level(last_backup_level):
@@ -490,6 +492,7 @@ def get_all_backup_dates_and_dirs(backup_dir=None):
     if os.path.exists(backup_dir):
         # scan the backup directories
         entries = os.scandir(backup_dir)
+        log(f'backup directories to scan: {entries}') #DEBUG
         for entry in entries:
             # look inside each backup level
             backed_up_time = get_date_and_dir(entry)
@@ -502,6 +505,7 @@ def get_all_backup_dates_and_dirs(backup_dir=None):
         backup_dates_with_dirs = None
         log(f'no backup dir in {backup_dir} so no backup dates')
 
+    log(f'backup_dates_with_dirs: {backup_dates_with_dirs}') #DEBUG
     return backup_dates_with_dirs
 
 def get_backup_dates_and_dirs():

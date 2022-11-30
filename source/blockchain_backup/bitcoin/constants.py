@@ -1,13 +1,15 @@
 '''
     Bitcoin constants
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-10-20
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-06-10
 '''
 import os
 
 BLOCKCHAIN_FACILITY = 'denova.blockchain_backup.bitcoin'
-BLOCKCHAIN_TYPE = 'blockchain_socketio_type'
+BLOCKCHAIN_TYPE = 'blockchain_long_polling_type'
+
+USE_LONG_POllING = False
 
 BACKUP_URL = '/bitcoin/backup/'
 SYNC_URL = '/bitcoin/update/'
@@ -39,3 +41,5 @@ LOCATION_NAME = 'location'
 CLOSE_WINDOW = 'You may proceed safely now.'
 CLOSE_WINDOW_NOW = f'&nbsp;{CLOSE_WINDOW}&nbsp;'
 RESTORE_BITCOIN = '<br/>&nbsp;You may need to <a href="/bitcoin/restore/">Restore</a> the blockchain.'
+
+STOPPING_UPDATE = 'Waiting for Bitcoin Core to stop'

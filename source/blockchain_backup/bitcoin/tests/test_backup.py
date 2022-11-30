@@ -1,8 +1,8 @@
 '''
     Tests for backup of the blockchain.
 
-    Copyright 2018-2020 DeNova
-    Last modified: 2020-10-07
+    Copyright 2018-2021 DeNova
+    Last modified: 2021-07-14
 '''
 
 from ve import activate, virtualenv_dir
@@ -18,13 +18,14 @@ from django.utils.timezone import now, utc
 from django.test import RequestFactory
 
 from blockchain_backup.bitcoin import preferences, state, views
+from blockchain_backup.bitcoin.backup_utils import is_backup_running
+from blockchain_backup.bitcoin.core_utils import is_bitcoind_running
 from blockchain_backup.bitcoin.models import Preferences, State
 from blockchain_backup.bitcoin.tests import utils as test_utils
 from blockchain_backup.bitcoin.backup import BackupTask
-from blockchain_backup.bitcoin.utils import is_backup_running, is_bitcoind_running
-from denova.python.log import get_log
+from denova.python.log import Log
 
-log = get_log()
+log = Log()
 
 class TestBackup(TestCase):
 
@@ -39,7 +40,7 @@ class TestBackup(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b"<title>\nBacking Up Bitcoin's Blockchain | Blockchain Backup\n</title>" in response.content)
         self.assertTrue(b"WARNING: Stopping the backup could damage the ability to restore the blockchain." in response.content)
-        self.assertTrue(b'If you need to stop the backup, then <a class="btn btn-secondary " href="/bitcoin/interrupt_backup/" role="button" id="stop-button" title="Click to stop backing up the blockchain">click here</a>.' in response.content)
+        self.assertTrue(b'If you need to stop the backup, then <a class="btn btn-secondary " href="/bitcoin/interrupt_backup/"' in response.content)
         self.assertTrue(b'Starting to back up the blockchain' in response.content)
 
         sleep(60)
@@ -62,7 +63,7 @@ class TestBackup(TestCase):
         self.assertTrue(b'The Bitcoin binary directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin data directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin backup directory is not valid.' in response.content)
-        self.assertTrue(b'Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
+        self.assertTrue(b'Click <a class="btn btn-secondary" id="preferences-id" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
 
     def test_backup_with_bad_data_dir(self):
         '''
@@ -81,7 +82,7 @@ class TestBackup(TestCase):
         self.assertFalse(b'The Bitcoin binary directory is not valid.' in response.content)
         self.assertTrue(b'The Bitcoin data directory is not valid.' in response.content)
         self.assertFalse(b'The Bitcoin backup directory is not valid.' in response.content)
-        self.assertTrue(b'Click <a class="btn btn-secondary" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
+        self.assertTrue(b'Click <a class="btn btn-secondary" id="preferences-id" role="button" href="/bitcoin/preferences/" title="Click to change your preferences">Preferences</a> to set it.' in response.content)
 
     def test_backup_with_bitcoind_running(self):
         '''

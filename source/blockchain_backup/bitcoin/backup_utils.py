@@ -2,7 +2,7 @@
     Utilities for backing up the blockchain.
 
     Copyright 2018-2022 DeNova
-    Last modified: 2022-01-31
+    Last modified: 2022-04-13
 '''
 
 import json
@@ -22,7 +22,7 @@ from blockchain_backup.bitcoin import constants, preferences, state
 from blockchain_backup.bitcoin.models import State
 from blockchain_backup.bitcoin.core_utils import rename_logs
 from blockchain_backup.bitcoin.gen_utils import check_for_updates, format_time
-from blockchain_backup.settings import DATABASE_PATH, TIME_ZONE
+from blockchain_backup.settings import DATABASE_NAME, TIME_ZONE
 from denova.os import command
 from denova.os.osid import is_windows
 from denova.os.process import get_pid, is_program_running
@@ -183,8 +183,6 @@ def wait_for_backup(backup_process, is_interrupted, update_progress=None):
         COPYING_START = 'Copying "'
         EQUAL_START = 'already equal: '
 
-        log(f'show_line: {line}') #DEBUG
-        log(f'line type: {type(line)}') #DEBUG
         # check safecopy's log to see which files are backed up
         if line is not None:
             show = False
@@ -321,7 +319,7 @@ def finish_backup(data_dir, to_backup_dir, backup_formatted_time, backup_level):
     state.set_last_backed_up_time(backup_time)
     state.set_last_backup_level(backup_level)
 
-    save_bcb_database(to_backup_dir)
+    save_bcb_database(data_dir, to_backup_dir)
 
 def add_backup_flag(to_backup_dir, backup_formatted_time):
     '''
@@ -576,7 +574,7 @@ def save_metadata(root_dir, starting_dir, json_file):
             if entry.is_dir() and entry.name != 'wallets':
                 save_metadata(root_dir, entry.path, json_file)
 
-def save_bcb_database(to_backup_dir):
+def save_bcb_database(data_dir, to_backup_dir):
     '''
         Save the blockchain_backup database.
 
@@ -585,27 +583,31 @@ def save_bcb_database(to_backup_dir):
         >>> test_utils.init_database()
         >>> data_dir = '/tmp/bitcoin/data/testnet3'
         >>> to_backup_dir, backup_formatted_time, backup_level = prep_backup(data_dir)
-        >>> blockchain_backup_db_backup_dir = save_bcb_database(to_backup_dir)
+        >>> blockchain_backup_db_backup_dir = save_bcb_database(data_dir, to_backup_dir)
         >>> blockchain_backup_db_backup_dir is not None
         True
         >>> os.path.exists(os.path.join(blockchain_backup_db_backup_dir, DATABASE_NAME))
         True
     '''
     try:
-        database_filename = DATABASE_PATH
-        blockchain_backup_db_backup_dir = os.path.join(
-          to_backup_dir, constants.BLOCKCHAIN_BACKUP_DB_DIR)
-        log(f'copying {database_filename} to {blockchain_backup_db_backup_dir}')
 
-        if os.path.exists(database_filename):
+        if os.path.exists(DATABASE_NAME):
+            blockchain_db_dir = os.path.join(data_dir, constants.BLOCKCHAIN_BACKUP_DB_DIR)
+            if not os.path.exists(blockchain_db_dir):
+                os.makedirs(blockchain_db_dir)
+            log(f'copying {DATABASE_NAME} to {blockchain_db_dir}')
+            copy(DATABASE_NAME, blockchain_db_dir)
+
+            blockchain_backup_db_backup_dir = os.path.join(
+              to_backup_dir, constants.BLOCKCHAIN_BACKUP_DB_DIR)
             if not os.path.exists(blockchain_backup_db_backup_dir):
                 os.makedirs(blockchain_backup_db_backup_dir)
-
-            copy(database_filename, blockchain_backup_db_backup_dir)
+            log(f'copying {DATABASE_NAME} to {blockchain_backup_db_backup_dir}')
+            copy(DATABASE_NAME, blockchain_backup_db_backup_dir)
 
             save_state(blockchain_backup_db_backup_dir)
         else:
-            log(f'no such file: {database_filename}')
+            log(f'no such file: {DATABASE_NAME}')
 
         log('saved blockchain_backup database')
     except: # 'bare except' because it catches more than "except Exception"

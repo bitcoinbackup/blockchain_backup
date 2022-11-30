@@ -13,7 +13,7 @@ setup()
 import os
 import doctest
 from django.test import TestCase
-from denova.python.log import get_log
+from denova.python.log import Log
 
 import blockchain_backup.config.bitcoin_shutdown
 import blockchain_backup.config.bitcoin_startup
@@ -23,7 +23,7 @@ import blockchain_backup.config.setup
 from blockchain_backup.bitcoin.tests import utils as test_utils
 import safecopy
 
-log = get_log()
+log = Log()
 
 class TestDoctests(TestCase):
 

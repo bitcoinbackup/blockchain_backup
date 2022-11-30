@@ -1,0 +1,39 @@
+{% extends "base_content.html" %}
+{% comment %}
+    Copyright 2018-2019 DeNova
+    Last modified: 2019-10-11
+{% endcomment %}
+{% load i18n custom %}
+
+{% block meta_description %}
+    <meta name="Description" content= "Document Not Found">
+{% endblock meta_description %}
+
+{% block titlevar %}Document Not Found{% endblock %}
+
+{% block body-content %}
+<div id="content-main">
+
+    {% title "Document Not Found" %}
+
+    <p class="dropcap">Please remember to use upper and lower case when entering an internet address.</p>
+
+    {% subtitle "You can:" %}
+
+    <ul>
+        <!--li><p><a href="/search/">search for the information</a> on our site</p></li-->
+
+        <li><p>send e-mail requesting help to
+            {% include 'clips/support_address.html' %}
+        </p></li>
+
+        <li><p>start with <a href="/">DeNova's home page</a></p></li>
+    </ul>
+
+    <p>&nbsp;</p>
+
+    <p>&nbsp;</p>
+
+    <p>&nbsp;</p>
+
+{% endblock %}

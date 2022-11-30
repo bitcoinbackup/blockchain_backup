@@ -1,11 +1,12 @@
+bootstrap4
 cryptography==3.4.7
 denova>=2.6.3
 django
-bootstrap4
 django-bootstrap4
 django-forms-bootstrap
 django-nose
 gunicorn
+human-readable
 pexpect
 pyOpenSSL
 requests==2.25.1
