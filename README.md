@@ -2,12 +2,28 @@
 Blockchain Backup
 -----------------
 
-
 Blockchain Backup protects access to your Bitcoin Core wallet with automatic blockchain backups and makes restoring your blockchain if and when it gets damaged. Obviously there are many backup programs, but Blockchain Backup is specifically designed to ensure backups are done routinely and that everything necessary for a smooth restore is preserved.
 
-Your Bitcoin Core wallet needs a local copy of the blockchain. It's very easy to damage your blockchain and therefore lose access to your wallet. Blockchain Backup makes it easy to recover quickly.
+Requirements
+------------
+
+Bitcoin Core. If you use the installer, then you also need Debian.
+
+Install
+-------
+
+ 1. Download blockchain-backup_1.3.6-1_all.deb
+ 2. Move to the directory where you saved the file
+ 3. sudo apt install gdebi && gdebi blockchain-backup_1.3.6-1_all.deb
+ 4. Start your browser and go to http://blockchain-backup.local
+
+
+Full Description
+----------------
 
 Blockchain Backup works with Bitcoin Core. You get your own non-custodial wallet. Your account balance isn't just a database entry at an exchange. You keep your money in your own hands. You have the keys.
+
+Your Bitcoin Core wallet needs a local copy of the blockchain. It's very easy to damage your blockchain and therefore lose access to your wallet. Blockchain Backup makes it easy to recover quickly.
 
 You run Blockchain Backup instead of starting Bitcoin-QT or bitcoind directly. When you're not actively using your wallet, Blockchain Backup updates and backs up your blockchain. Whenever you need your wallet, Blockchain Backup pauses and opens your wallet for you via Bitcoin-QT. As soon as you're done you close Bitcoin-QT. Blockchain Backup then updates and protects your blockchain again. Remember that it's your responsibility to back up your wallet.
 
@@ -18,3 +34,4 @@ Blockchain Backup runs in a virtual environment which is automatically created a
 You will manage Blockchain Backup via your browser on your local server by going to http://blockchain-backup.local. Configuration files are installed in /etc/nginx/sites-available and /etc/nginx/sites-enabled for easy management of Blockchain Backup.
 
 Blockchain Backup never sends any of your data to any other computer or network.
+
