@@ -1,7 +1,7 @@
 # Files git should ignore
 
-# Copyright 2018-2020 DeNova
-# Last modified: 2020-10-26
+# Copyright 2018-2023 BlockchainBackup
+# Last modified: 2023-05-30
 
 # when you add a file or dir to .gitignore, always:
 #     git rm --cached FILENAME
@@ -14,13 +14,3 @@
 *.pyo
 *.class
 *.log
-
-docs/
-
-virtualenv/
-virtualenv3/
-
-# data
-data/
-
-migrations/
